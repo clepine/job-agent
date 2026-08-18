@@ -273,6 +273,47 @@ def main(argv: list[str] | None = None) -> int:
             for note in sel.notes:
                 print(f"  ! {note}")
 
+        # A short list has several very different causes and conflating them is
+        # how a broken pipeline gets mistaken for a quiet job market. Diagnose
+        # from the database instead of asserting scarcity.
+        for _track, _sel, _cands in (
+            ("software", sw_sel, sw_candidates),
+            ("hardware", hw_sel, hw_candidates),
+        ):
+            if not getattr(_sel, "short_by", 0):
+                continue
+            _unscored = conn.execute(
+                "select count(*) from jobs where track=? and scored_at is null",
+                (_track,),
+            ).fetchone()[0]
+            _shown = conn.execute(
+                "select count(*) from jobs where track=? and shown_at is not null",
+                (_track,),
+            ).fetchone()[0]
+            if _cands:
+                _why = (
+                    f"{len(_cands)} scored candidate(s) available — fewer than wanted. "
+                    "The pool will refill as scoring catches up."
+                )
+            elif _unscored:
+                _fix = (
+                    "scoring was skipped (--no-llm), so nothing is eligible yet"
+                    if args.no_llm
+                    else "raise --max-scores, or let the backlog drain over subsequent runs"
+                )
+                _why = f"{_unscored} qualified posting(s) waiting to be scored — {_fix}."
+            elif _shown:
+                _why = (
+                    f"every scored posting ({_shown}) has already been sent. "
+                    "Waiting on genuinely new postings."
+                )
+            else:
+                _why = (
+                    "no qualified postings in the database at all — check the fetch "
+                    "and filter counts above before assuming the market is quiet."
+                )
+            print(f"  -> {_track}: {_why}")
+
         # Descriptions are not persisted in the committed ledger, so a job
         # scored days ago arrives with an empty body. Re-hydrate just the ten
         # being emailed — free HTTP, and only the keyword diff depends on it.

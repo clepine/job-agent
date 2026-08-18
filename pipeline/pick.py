@@ -98,8 +98,9 @@ def pick_track(candidates: Sequence[Job], cfg: dict, track: str) -> Selection:
         sel.short_by = want - len(chosen)
         sel.notes.append(
             f"Only {len(chosen)} {track} match{'' if len(chosen) == 1 else 'es'} "
-            f"cleared the filters today (wanted {want}). The backlog is genuinely "
-            f"empty — see PLAN.md §3 on why 5/day hardware does not exist."
+            f"available to send today (wanted {want}). run.py diagnoses why — a "
+            f"short list can mean unscored backlog, an exhausted pool, or a "
+            f"genuine drought, and these are not the same problem."
         )
 
     sel.jobs = sorted(chosen, key=lambda j: final_score(j, cfg), reverse=True)[:want]

@@ -190,7 +190,18 @@ def test_pick_reports_a_short_day_rather_than_padding(cfg):
     sel = pick_track([_scored("Only", 2, 70)], cfg, "hardware")
     assert len(sel.jobs) == 1
     assert sel.short_by == 4
-    assert any("cleared the filters" in n for n in sel.notes)
+    assert any("available to send today" in n for n in sel.notes)
+
+
+def test_short_day_note_does_not_assert_a_cause(cfg):
+    """A short list can mean an unscored backlog, an exhausted pool, or a real
+    drought. pick_track cannot tell which — it must not claim to. run.py owns
+    the diagnosis because only it can see the database."""
+    sel = pick_track([_scored("Only", 2, 70)], cfg, "hardware")
+    note = " ".join(sel.notes).lower()
+    assert "genuinely" not in note
+    assert "does not exist" not in note
+    assert "plan.md" not in note
 
 
 def test_primary_metro_beats_secondary_at_equal_fit(cfg):
