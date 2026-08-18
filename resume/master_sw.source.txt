@@ -1,0 +1,46 @@
+Charles Lepine 
+919-428-0702  |  Clepine050@gmail.com  |  Raleigh, NC  |  linkedin.com/in/charles-lepine 
+EDUCATION 
+North Carolina State University | Raleigh, NC Aug 2022 – Dec 2026 
+B.S. Computer Engineering  |  Senior Standing 
+Core Coursework: Data Structures & OOP (C++), Computer Systems Programming, Introduction to Computer Systems, Computer 
+Networking, Discrete Mathematics, Fundamentals of Logic Design, Introduction to Embedded Systems 
+In Progress (Fall 2026): Microprocessor Architecture, Design of Complex Digital Systems, Communication Engineering, Senior Design 
+TECHNICAL SKILLS 
+Languages: C, C++, Java, Python, PowerShell 
+Frameworks & Libraries: LangChain, LiteLLM, Pydantic, Posh-ACME 
+Tools & Platforms: Git, GitHub, VS Code, Wireshark, IBM HTTP Server, GSKit, Ollama 
+Cloud & Infrastructure: AWS, Azure, Google Cloud, Cloudflare (DNS/ACME integrations), TLS/PKI 
+EXPERIENCE 
+IBM | Software Developer Intern — RTP, NC May 2026 – Aug 2026 
+SSL/TLS Certificate Lifecycle Automation 
+• Built a PowerShell automation system for IBM HTTP Server that cut TLS certificate deployment from a 1–3 day manual process to 
+a 5-minute setup, with every subsequent renewal then completing automatically and unattended in a few minutes. 
+• Designed a modular challenge-plugin architecture of 6 plugins supporting HTTP and DNS validation across AWS, Azure, Cloudflare, 
+and Google Cloud, making the tool compatible with any ACME-compliant certificate authority on the market. 
+• Consolidated 20 manual renewal steps into a single script with encrypted credential resolution from cloud vaults, automatic 
+rollback on failed deployment, and email alerting on every renewal event; validated across 13 separate production domains. 
+AI Agent Extraction Pipeline 
+• Designed a three -stage pipeline (Slack ingestion, preprocessing, and LLM extraction) that applies PII and secrets guardrails and 
+turns raw engineering discussion threads into a structured, searchable FAQ page in under 10 minutes of runtime. 
+• Orchestrated three sequential LLM calls (question extraction, answer extraction, and topic classification) in LangChain via LiteLLM, 
+enforcing consistent, machine-parsable structured output with a Pydantic schema at every stage of the chain. 
+• Extended the pipeline to additional source types with an adaptive segmentation algorithm that reused the LLM extraction stage  
+unmodified, and added a checkpoint system so that repeat runs skip any threads that were already processed. 
+NCFC / Wake FC / Net Sports | Soccer Referee — Raleigh–Durham, NC June 2020 – Present 
+• Officiated over 500 matches from amateur leagues through semi-professional UPSL play, enforcing FIFA and league laws. 
+• Mentored junior and assistant referees on positioning, mechanics, and rule interpretation to ensure consistency. 
+PROJECTS 
+AI Occupancy Detection Camera — NVIDIA PeopleNet, DeepStream SDK Senior Design | Aug 2026 – Present 
+• Leading a team of 4 building an AI occupancy camera that counts people in a room and streams live headcount to a dashboard. 
+• Architecting the vision pipeline around NVIDIA PeopleNet for person detection, deployed through the NVIDIA DeepStream SDK. 
+• Owning scope breakdown and integration across the team, from camera capture through inference to the dashboard front end. 
+Remote-Operated Embedded Vehicle — C, MSP430 Embedded Systems | Course Project 
+• Developed embedded firmware in C for an MSP430 microcontroller to drive and steer a remote-operated vehicle. 
+• Implemented modules for infrared sensing, motion control algorithms, LCD display output, and IoT communication. 
+• Interpreted manufacturer datasheets to integrate hardware peripherals and write low-level device drivers from scratch. 
+LEADERSHIP & ACTIVITIES 
+NC State Club Soccer — Team Member Jan 2024 – Present 
+• Selected from over 200 candidates in a competitive 3-day tryout; competes in the CCS league and regional tournaments. 
+NC State Rocket League Esports — Team Member Aug 2022 – Present 
+• Competed on NC State’s highest-ranked Rocket League team, reaching a top 0.01% global ranking and winning tournaments. 

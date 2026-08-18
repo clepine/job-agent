@@ -1,0 +1,81 @@
+# Daily Job Agent — runtime configuration
+# Everything cost-relevant lives here so it can be tuned without touching code.
+
+owner:
+  name: Charles Lepine
+  email: clepine050@gmail.com
+  graduation: 2026-12
+  citizenship: US
+  clearance_eligible: true
+
+model:
+  # Deliberate choice: Sonnet 5, not Opus. See README "Cost model".
+  id: claude-sonnet-5
+  # Thinking is ON BY DEFAULT on Sonnet 5. We disable it explicitly — the one
+  # remaining LLM stage is bounded scoring, not deep reasoning, and thinking
+  # tokens bill as output at 5x the input rate.
+  thinking: disabled          # disabled | adaptive
+  effort: low                 # low | medium | high | xhigh | max
+  max_tokens_score: 1200
+  max_tokens_tailor: 2500
+
+budget:
+  # HARD per-run ceiling in USD. The run aborts BEFORE any call that would
+  # push estimated spend past this. Protects against a filter-layer bug
+  # dumping 500 jobs into the model overnight.
+  max_usd_per_run: 0.10
+  # Sonnet 5 list pricing, USD per 1M tokens. Update if pricing changes.
+  # (An introductory rate of $2/$10 ran through 2026-08-31; we estimate at the
+  # standard rate so the ceiling is conservative, never optimistic.)
+  price_input_per_mtok: 3.00
+  price_output_per_mtok: 15.00
+  price_cache_write_per_mtok: 3.75    # 1.25x input, 5-minute TTL
+  price_cache_read_per_mtok: 0.30     # 0.10x input
+  usage_log: out/usage.jsonl
+
+limits:
+  # Cheap local BM25 pre-rank keeps this many per track before LLM scoring.
+  max_jobs_to_prerank: 40
+  # Ceiling on how many NEVER-SCORED jobs get sent to the model in one run.
+  # Steady state is ~10-15; the cap stops a backlog or a filter bug from
+  # turning one run into a large bill.
+  max_new_scores_per_run: 20
+  # Jobs per scoring request. Batching amortizes the cached resume prefix.
+  score_batch_size: 8
+  # Compressed job descriptions are hard-truncated to this many characters
+  # before ANY of them reaches the model.
+  jd_max_chars: 1600
+  # Drop postings older than this. Lever in particular reports the req's
+  # original createdAt, which surfaces reqs open for literally years — a
+  # 1,400-day-old posting is not a lead. Postings with NO date are kept
+  # (unknown age is not the same as old age) and simply age-stamped "unknown".
+  max_posting_age_days: 180
+  # Diversity guard: at most this many slots per company per track, so one
+  # company with a big board cannot take the whole email.
+  max_per_company: 2
+
+email:
+  subject_prefix: "Daily Job Matches"
+  per_track: 5
+  tier1_quota: 2                # 2 from Tier 1 + 3 from Tier 2, per PLAN §1
+  tier2_quota: 3
+
+geography:
+  primary_bonus: 15
+  secondary_penalty: -5
+
+fetch:
+  timeout_seconds: 25
+  max_concurrency: 8
+  retries: 2
+  user_agent: "job-agent/1.0 (+https://github.com/clepine/job-agent)"
+
+paths:
+  # Local working store. Gitignored — see state/ below.
+  db: state.db
+  # Committed, diff-friendly ledger. This is the real persisted state.
+  state: state/seen_jobs.json
+  out_dir: out
+  companies: companies.yaml
+  resume_sw: resume/master_sw.yaml
+  resume_hw: resume/master_hw.yaml

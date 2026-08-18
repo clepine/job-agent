@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+.DS_Store
+token.json
+credentials.json
+.pytest_cache/
+.ruff_cache/
+state.db
+state.db-journal
+state.db-wal
+state.db-shm

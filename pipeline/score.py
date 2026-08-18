@@ -1,0 +1,190 @@
+"""Score-once ingest stage — the ONLY LLM call in a normal daily run.
+
+A posting's fit against a fixed resume does not change between days, so it is
+scored exactly once, when it first survives the hard filters, and the result is
+persisted (`fit_score`, `fit_rationale`, `scored_at`). The daily pick then reads
+scores out of SQLite and calls nothing.
+
+Cost shape:
+  * Jobs are batched (config: limits.score_batch_size) so one request covers
+    ~8 postings and the cached resume prefix is amortized across them.
+  * The stable prefix — instructions + resume summary — carries the cache
+    breakpoint; the volatile job list goes after it.
+  * Every JD is compressed by pipeline.jd.compress_jd() first.
+"""
+
+from __future__ import annotations
+
+import json
+from typing import Iterable, Sequence
+
+from .jd import compress_jd
+from .llm import BudgetExceeded, LlmClient, Usage
+from .models import Job
+
+SYSTEM_TEMPLATE = """You score new-grad engineering job postings against one candidate's resume.
+
+CANDIDATE ({track} resume)
+{resume_summary}
+
+CONTEXT
+- Graduating December 2026; targeting new-grad / entry-level roles starting 2027.
+- US citizen, eligible to obtain a security clearance (an advantage at defense employers).
+- Strongest hardware angle is embedded / firmware (C, MSP430, board bring-up).
+- Digital/ASIC is a reach: coursework-level Verilog, no tapeout experience.
+- Mechanical is the weakest area; deprioritize unless the role is mechatronics or test.
+
+TASK
+For each posting, output:
+  id        the posting id, copied exactly
+  score     0-100 fit. Calibration:
+              80-100 strong match, he should apply today
+              60-79  good match, clearly worth applying
+              40-59  plausible but a stretch on skills or focus
+              0-39   poor match
+  rationale ONE sentence, under 25 words, naming the concrete overlap or the
+            concrete gap. No filler, no restating the job title.
+
+Score honestly. A generous score wastes one of five daily slots on a bad match."""
+
+SCHEMA = {
+    "type": "object",
+    "properties": {
+        "scores": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "score": {"type": "integer"},
+                    "rationale": {"type": "string"},
+                },
+                "required": ["id", "score", "rationale"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["scores"],
+    "additionalProperties": False,
+}
+
+
+def resume_summary(resume: dict) -> str:
+    """A compact, stable rendering of the resume for the cached prefix.
+
+    Deterministic: same input -> same bytes, so the cache actually hits.
+    """
+    lines: list[str] = []
+    edu = resume.get("education") or {}
+    lines.append(
+        f"Education: {edu.get('degree','')}, {edu.get('school','')} "
+        f"({edu.get('dates','')})"
+    )
+    if edu.get("coursework"):
+        lines.append("Coursework: " + ", ".join(edu["coursework"]))
+    if edu.get("in_progress"):
+        lines.append(
+            f"In progress ({edu.get('in_progress_term','')}, completes "
+            f"{edu.get('in_progress_completes','')}): "
+            + ", ".join(edu["in_progress"])
+        )
+    for group, items in (resume.get("skills") or {}).items():
+        label = group.replace("_", " ").title()
+        values = items if isinstance(items, list) else [items]
+        lines.append(f"{label}: " + ", ".join(str(v) for v in values))
+    for entry in resume.get("experience") or []:
+        head = f"{entry.get('title','')} @ {entry.get('company','')} ({entry.get('dates','')})"
+        lines.append(head)
+        for sub in entry.get("subsections") or []:
+            lines.append(f"  - {sub.get('name','')}")
+            for bullet in (sub.get("bullets") or [])[:3]:
+                lines.append(f"    * {bullet}")
+        for bullet in (entry.get("bullets") or [])[:2]:
+            lines.append(f"  * {bullet}")
+    for project in resume.get("projects") or []:
+        lines.append(f"Project: {project.get('title','')} — {project.get('stack','')}")
+        for bullet in (project.get("bullets") or [])[:3]:
+            lines.append(f"  * {bullet}")
+    return "\n".join(lines)
+
+
+def job_payload(job: Job, jd_max_chars: int) -> dict:
+    return {
+        "id": job.id,
+        "company": job.company,
+        "title": job.title,
+        "location": job.location,
+        "metro": job.metro or "",
+        "tier": job.tier,
+        "clearance_advantage": job.clearance_advantage,
+        "jd": compress_jd(job.description, jd_max_chars),
+    }
+
+
+def build_user_content(jobs: Sequence[Job], jd_max_chars: int) -> str:
+    payload = [job_payload(j, jd_max_chars) for j in jobs]
+    return "Score these postings:\n" + json.dumps(payload, ensure_ascii=False)
+
+
+def score_jobs(
+    llm: LlmClient,
+    jobs: Sequence[Job],
+    resume: dict,
+    track: str,
+    cfg: dict,
+) -> tuple[list[Job], Usage, list[str]]:
+    """Score `jobs` in batches. Returns (scored_jobs, usage, warnings).
+
+    A BudgetExceeded stops scoring and returns whatever was scored so far —
+    the run still sends an email from the jobs already in the database.
+    """
+    warnings: list[str] = []
+    if not jobs:
+        return [], Usage(), warnings
+
+    limits = cfg["limits"]
+    batch_size = int(limits.get("score_batch_size", 8))
+    jd_max_chars = int(limits.get("jd_max_chars", 1600))
+    max_tokens = int(cfg["model"].get("max_tokens_score", 1200))
+
+    system_cached = SYSTEM_TEMPLATE.format(
+        track=track, resume_summary=resume_summary(resume)
+    )
+
+    by_id = {j.id: j for j in jobs}
+    scored: list[Job] = []
+    total = Usage()
+
+    for start in range(0, len(jobs), batch_size):
+        batch = list(jobs[start : start + batch_size])
+        label = f"score:{track}:{start // batch_size}"
+        try:
+            data, usage = llm.complete_json(
+                system_cached=system_cached,
+                user_content=build_user_content(batch, jd_max_chars),
+                schema=SCHEMA,
+                max_tokens=max_tokens,
+                label=label,
+            )
+        except BudgetExceeded as exc:
+            warnings.append(str(exc))
+            break
+        except Exception as exc:  # noqa: BLE001 — one bad batch must not kill the run
+            warnings.append(f"{label} failed: {exc}")
+            continue
+
+        total = total + usage
+        returned = {row["id"] for row in data.get("scores", [])}
+        for row in data.get("scores", []):
+            job = by_id.get(row["id"])
+            if job is None:
+                warnings.append(f"{label}: model returned unknown id {row['id']!r}")
+                continue
+            job.fit_score = max(0, min(100, int(row["score"])))
+            job.fit_rationale = str(row["rationale"]).strip()[:300]
+            scored.append(job)
+        missing = {j.id for j in batch} - returned
+        if missing:
+            warnings.append(f"{label}: {len(missing)} postings came back unscored")
+
+    return scored, total, warnings

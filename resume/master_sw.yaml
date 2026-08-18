@@ -1,0 +1,151 @@
+# Master software resume — structured form of resume/master_sw.source.txt
+#
+# HONESTY CONTRACT: this file is the complete set of facts the tailoring stage
+# is allowed to work from. Tailoring may reorder, rephrase, or promote what is
+# here. It may not add. pipeline/tailor.py enforces that in code, not just in
+# the prompt — see validate_tailored().
+#
+# Every string below is traceable to the source text. Nothing was strengthened.
+
+meta:
+  track: software
+  source_file: master_sw.source.txt
+
+contact:
+  name: Charles Lepine
+  phone: "919-428-0702"
+  email: Clepine050@gmail.com
+  location: Raleigh, NC
+  linkedin: linkedin.com/in/charles-lepine
+
+education:
+  school: North Carolina State University
+  school_location: Raleigh, NC
+  dates: Aug 2022 – Dec 2026
+  degree: B.S. Computer Engineering
+  standing: Senior Standing
+  coursework:
+    - Data Structures & OOP (C++)
+    - Computer Systems Programming
+    - Introduction to Computer Systems
+    - Computer Networking
+    - Discrete Mathematics
+    - Fundamentals of Logic Design
+    - Introduction to Embedded Systems
+  in_progress:
+    - Microprocessor Architecture
+    - Design of Complex Digital Systems
+    - Communication Engineering
+    - Senior Design
+  # PLAN.md §4: Fall 2026 coursework completes before a Jan 2027 start date and
+  # should read as complete on resumes tailored for those start dates.
+  in_progress_term: Fall 2026
+  in_progress_completes: 2026-12
+
+skills:
+  languages:
+    - C
+    - C++
+    - Java
+    - Python
+    - PowerShell
+  frameworks_libraries:
+    - LangChain
+    - LiteLLM
+    - Pydantic
+    - Posh-ACME
+  tools_platforms:
+    - Git
+    - GitHub
+    - VS Code
+    - Wireshark
+    - IBM HTTP Server
+    - GSKit
+    - Ollama
+  cloud_infrastructure:
+    - AWS
+    - Azure
+    - Google Cloud
+    - Cloudflare (DNS/ACME integrations)
+    - TLS/PKI
+
+experience:
+  - company: IBM
+    title: Software Developer Intern
+    location: RTP, NC
+    dates: May 2026 – Aug 2026
+    subsections:
+      - name: SSL/TLS Certificate Lifecycle Automation
+        bullets:
+          - Built a PowerShell automation system for IBM HTTP Server that cut TLS
+            certificate deployment from a 1–3 day manual process to a 5-minute setup,
+            with every subsequent renewal then completing automatically and unattended
+            in a few minutes.
+          - Designed a modular challenge-plugin architecture of 6 plugins supporting
+            HTTP and DNS validation across AWS, Azure, Cloudflare, and Google Cloud,
+            making the tool compatible with any ACME-compliant certificate authority
+            on the market.
+          - Consolidated 20 manual renewal steps into a single script with encrypted
+            credential resolution from cloud vaults, automatic rollback on failed
+            deployment, and email alerting on every renewal event; validated across
+            13 separate production domains.
+      - name: AI Agent Extraction Pipeline
+        bullets:
+          - Designed a three-stage pipeline (Slack ingestion, preprocessing, and LLM
+            extraction) that applies PII and secrets guardrails and turns raw
+            engineering discussion threads into a structured, searchable FAQ page in
+            under 10 minutes of runtime.
+          - Orchestrated three sequential LLM calls (question extraction, answer
+            extraction, and topic classification) in LangChain via LiteLLM, enforcing
+            consistent, machine-parsable structured output with a Pydantic schema at
+            every stage of the chain.
+          - Extended the pipeline to additional source types with an adaptive
+            segmentation algorithm that reused the LLM extraction stage unmodified,
+            and added a checkpoint system so that repeat runs skip any threads that
+            were already processed.
+
+  - company: NCFC / Wake FC / Net Sports
+    title: Soccer Referee
+    location: Raleigh–Durham, NC
+    dates: June 2020 – Present
+    bullets:
+      - Officiated over 500 matches from amateur leagues through semi-professional
+        UPSL play, enforcing FIFA and league laws.
+      - Mentored junior and assistant referees on positioning, mechanics, and rule
+        interpretation to ensure consistency.
+
+projects:
+  - title: AI Occupancy Detection Camera
+    stack: NVIDIA PeopleNet, DeepStream SDK
+    context: Senior Design
+    dates: Aug 2026 – Present
+    bullets:
+      - Leading a team of 4 building an AI occupancy camera that counts people in a
+        room and streams live headcount to a dashboard.
+      - Architecting the vision pipeline around NVIDIA PeopleNet for person detection,
+        deployed through the NVIDIA DeepStream SDK.
+      - Owning scope breakdown and integration across the team, from camera capture
+        through inference to the dashboard front end.
+
+  - title: Remote-Operated Embedded Vehicle
+    stack: C, MSP430
+    context: Embedded Systems | Course Project
+    bullets:
+      - Developed embedded firmware in C for an MSP430 microcontroller to drive and
+        steer a remote-operated vehicle.
+      - Implemented modules for infrared sensing, motion control algorithms, LCD
+        display output, and IoT communication.
+      - Interpreted manufacturer datasheets to integrate hardware peripherals and
+        write low-level device drivers from scratch.
+
+leadership:
+  - title: NC State Club Soccer — Team Member
+    dates: Jan 2024 – Present
+    bullets:
+      - Selected from over 200 candidates in a competitive 3-day tryout; competes in
+        the CCS league and regional tournaments.
+  - title: NC State Rocket League Esports — Team Member
+    dates: Aug 2022 – Present
+    bullets:
+      - Competed on NC State's highest-ranked Rocket League team, reaching a top 0.01%
+        global ranking and winning tournaments.

@@ -1,0 +1,49 @@
+Charles Lepine 
+919-428-0702  |  Clepine050@gmail.com  |  Raleigh, NC  |  linkedin.com/in/charles-lepine 
+U.S. Citizen — eligible to obtain U.S. Government security clearance 
+EDUCATION 
+North Carolina State University | Raleigh, NC Aug 2022 – Dec 2026 
+B.S. Computer Engineering  |  Senior Standing 
+Core Coursework: Fundamentals of Logic Design, Microelectronics, Electric Circuits, Introduction to Embedded Systems, Circuit Board 
+Layout, Linear Systems, Computer Networking, Data Structures & OOP (C++), Computer Systems Programming 
+In Progress (Fall 2026): Design of Complex Digital Systems (Verilog/Vivado), Microprocessor Architecture, Communication Engineering 
+TECHNICAL SKILLS 
+Hardware & Digital Design: Verilog, PCB layout (KiCad), surface-mount soldering, H-bridge motor drive, ADCs, timers, interrupts 
+Test & Lab Equipment: Oscilloscopes, logic analyzers, multimeters, Analog Discovery 3, Waveforms, datasheet-driven bring-up 
+Languages: C, C++, Assembly, Python, Java, PowerShell 
+Software & Tools: Code Composer Studio, MATLAB, Wireshark, Git, GitHub, VS Code, CLion, NVIDIA DeepStream SDK 
+EXPERIENCE 
+IBM | Software Developer Intern — RTP, NC May 2026 – Aug 2026 
+SSL/TLS Certificate Lifecycle Automation 
+• Built a PowerShell automation system for IBM HTTP Server that cut TLS certificate deployment from a 1–3 day manual process to 
+a 5-minute setup, with every subsequent renewal then completing automatically and unattended in a few minutes. 
+• Designed a modular challenge-plugin architecture of 6 plugins supporting HTTP and DNS validation across AWS, Azure, Cloudflare, 
+and Google Cloud, making the tool compatible with any ACME-compliant certificate authority on the market. 
+• Consolidated 20 manual renewal steps into a single script with encrypted credential resolution from cloud vaults, automatic 
+rollback on failed deployment, and email alerting on every renewal event; validated across 13 separate production domains. 
+AI Agent Extraction Pipeline 
+• Designed a three -stage pipeline (Slack ingestion, preprocessing, and LLM extraction) that applies PII and secrets guardrails and 
+turns raw engineering discussion threads into a structured, searchable FAQ page in under 10 minutes of runtime. 
+• Orchestrated three sequential LLM calls (question extraction, answer extraction, and topic classification) in LangChain via LiteLLM, 
+enforcing consistent, machine-parsable structured output with a Pydantic schema at every stage of the chain. 
+• Extended the pipeline to additional source types with an adaptive segmentation algorithm that reused the LLM extraction stage  
+unmodified, and added a checkpoint system so that repeat runs skip any threads that were already processed. 
+NCFC / Wake FC / Net Sports | Soccer Referee — Raleigh–Durham, NC June 2020 – Present 
+• Officiated over 500 matches from amateur leagues through semi-professional UPSL play, enforcing FIFA and league laws. 
+• Mentored junior and assistant referees on positioning, mechanics, and rule interpretation to ensure consistency. 
+PROJECTS 
+AI Occupancy Detection Camera — NVIDIA PeopleNet, DeepStream SDK Senior Design | Aug 2026 – Present 
+• Leading a team of 4 building an AI occupancy camera that counts people in a room and streams live headcount to a dashboard. 
+• Architecting the vision pipeline around NVIDIA PeopleNet for person detection, deployed through the NVIDIA DeepStream SDK. 
+• Owning scope breakdown and integration across the team, from camera capture through inference to the dashboard front end. 
+Remote-Operated Embedded Vehicle — C, Assembly, MSP430 Intro to Embedded Systems 
+• Soldered custom PCBs with surface-mount components for the power, display, and control subsystems of the vehicle. 
+• Programmed an MSP430 in C and assembly to drive H-bridge motors, sample sensors over ADC, and service timer interrupts. 
+• Integrated a Wi-Fi module and infrared line-detection, verifying signal behavior on an oscilloscope and logic analyzer. 
+Digital Logic Design Project — Verilog, CAD tools, Analog Discovery 3 Fundamentals of Logic Design 
+• Designed and simulated digital logic systems in Verilog, using CAD tools for synthesis, minimization, and state assignment. 
+• Assembled and wired a combinational logic circuit on a breadboard, integrating ICs with input and output components. 
+• Verified logic behavior against expected waveforms with the Analog Discovery 3 logic analyzer and pattern generator. 
+LEADERSHIP & ACTIVITIES 
+NC State Club Soccer — Team Member | Selected from 200+ candidates in a competitive 3-day tryout Jan 2024 – Present 
+NC State Rocket League Esports — Team Member | Top 0.01% global ranking, $5,000+ tournament wins Aug 2022 – Present 

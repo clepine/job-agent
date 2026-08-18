@@ -1,0 +1,12 @@
+# Daily Job Agent — pinned dependencies
+# Python 3.11+ (developed/tested on 3.14)
+
+anthropic==0.122.0
+httpx==0.28.1
+pydantic==2.13.4
+PyYAML==6.0.3
+fpdf2==2.8.8
+python-dotenv==1.2.3
+
+# dev / test
+pytest==9.1.1

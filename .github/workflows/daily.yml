@@ -1,0 +1,203 @@
+name: Daily job matches
+
+# ---------------------------------------------------------------------------
+# 6:30 AM Eastern, Monday-Friday.
+#
+# GitHub Actions cron is ALWAYS UTC and has no timezone or DST support, so a
+# single cron expression drifts by an hour twice a year. 6:30 AM ET is:
+#     10:30 UTC during EDT (roughly mid-March to early November)
+#     11:30 UTC during EST (roughly early November to mid-March)
+#
+# Two strategies were available:
+#
+#   (a) One cron at a compromise hour and accept being an hour off for half the
+#       year. Rejected: the whole point of 6:30 AM is landing before he wakes
+#       up, and 7:30 arrives after.
+#
+#   (b) Fire BOTH candidate times and have the job itself decide whether "now"
+#       is really 6:30 in New York, exiting immediately if not.
+#
+# (b) is implemented below. The guard step asks Python for the current
+# America/New_York hour — the tz database handles DST, including any future
+# change to the DST rules, which a hardcoded date range would not. Exactly one
+# of the two daily triggers survives the guard on any given day; the other exits
+# in a couple of seconds and costs nothing.
+#
+# The guard is skipped for manual (workflow_dispatch) runs so the owner can
+# trigger a run at any hour.
+# ---------------------------------------------------------------------------
+
+on:
+  schedule:
+    - cron: "30 10 * * 1-5"   # 6:30 AM EDT (UTC-4)
+    - cron: "30 11 * * 1-5"   # 6:30 AM EST (UTC-5)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Render the email but do not send it"
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-job-agent
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # needed to commit state.db and out/ back to the repo
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Is it actually 6:30 AM in New York?
+        id: guard
+        run: |
+          HOUR=$(python3 -c "
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          print(datetime.now(ZoneInfo('America/New_York')).hour)
+          ")
+          echo "New York hour is $HOUR"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "manual run — skipping the DST guard"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$HOUR" = "6" ]; then
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "This trigger is the wrong side of DST today. Exiting."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.guard.outputs.proceed == 'true'
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: steps.guard.outputs.proceed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.guard.outputs.proceed == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        if: steps.guard.outputs.proceed == 'true'
+        # The filter layer is what stands between the owner's inbox and a
+        # lawyer posting, and between his API balance and a runaway run.
+        # If it regresses, do not send an email.
+        run: python -m pytest tests/ -q
+
+      - name: Run the pipeline
+        if: steps.guard.outputs.proceed == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python run.py --dry-run
+          else
+            python run.py
+          fi
+
+      - name: Publish run summary
+        if: steps.guard.outputs.proceed == 'true' && always()
+        run: |
+          FILE="out/$(TZ=America/New_York date +%F)/summary.md"
+          if [ -f "$FILE" ]; then
+            cat "$FILE" >> "$GITHUB_STEP_SUMMARY"
+          else
+            # No summary file means the pipeline did not reach the end. That is
+            # a different failure from "ran fine, found nothing" — say so.
+            echo "## Job agent did NOT complete" >> "$GITHUB_STEP_SUMMARY"
+            echo "No summary was written, so the run failed before finishing." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Commit state and artifacts
+        if: steps.guard.outputs.proceed == 'true'
+        run: |
+          git config user.name  "job-agent[bot]"
+          git config user.email "job-agent[bot]@users.noreply.github.com"
+          # state/seen_jobs.json is the seen/shown/score ledger — a sorted,
+          # diff-friendly text file. state.db is a LOCAL working store only and
+          # is gitignored: committing a binary SQLite file that is rewritten in
+          # full every run would add a fresh full copy to history ~250x a year.
+          # out/<date>/ carries the rendered email, summary, and tailored PDFs.
+          git add -A state/ out/ || true
+          if git diff --cached --quiet; then
+            echo "nothing changed"
+          else
+            git commit -m "job-agent: run $(date -u +%Y-%m-%d)"
+            # Another run (or a manual push) may have landed first.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Upload artifacts
+        if: steps.guard.outputs.proceed == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-output
+          path: |
+            out/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # -------------------------------------------------------------------
+      # Failure visibility.
+      #
+      # The realistic way this project dies is silently: a board changes its
+      # API, the run starts failing, and the owner just stops getting email and
+      # assumes there were no matches that week. GitHub also disables scheduled
+      # workflows after 60 days of repository inactivity — and says so only in
+      # an email that is easy to miss.
+      #
+      # So a failed run must actively tell him. continue-on-error means a
+      # problem in the notifier (bad credential, SMTP outage) can never mask or
+      # overwrite the original failure that triggered it.
+      # -------------------------------------------------------------------
+      - name: Notify on failure
+        if: failure() && steps.guard.outputs.proceed == 'true'
+        continue-on-error: true
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 - <<'PY'
+          import os, smtplib, ssl
+          from email.message import EmailMessage
+
+          address = os.environ.get("GMAIL_ADDRESS")
+          password = os.environ.get("GMAIL_APP_PASSWORD")
+          if not address or not password:
+              raise SystemExit("no mail credentials; cannot notify")
+
+          message = EmailMessage()
+          message["Subject"] = "[job-agent] FAILED - no matches email today"
+          message["From"] = address
+          message["To"] = address
+          message.set_content(
+              "The daily job agent run failed, so there is no matches email today.\n"
+              "This is a FAILURE, not an empty result -- do not read the missing\n"
+              "email as 'there were no matches'.\n\n"
+              f"Run log: {os.environ.get('RUN_URL', '(unknown)')}\n\n"
+              "Common causes:\n"
+              "  * a board changed or removed its public JSON API\n"
+              "  * ANTHROPIC_API_KEY is missing, revoked, or out of credit\n"
+              "  * GMAIL_APP_PASSWORD was rotated or revoked\n"
+              "  * the test suite failed, which blocks sending by design\n\n"
+              "Reminder: GitHub disables scheduled workflows after 60 days of\n"
+              "repository inactivity. If runs stop entirely, re-enable the\n"
+              "workflow in the Actions tab.\n"
+          )
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ssl.create_default_context(), timeout=30) as server:
+              server.login(address, password)
+              server.send_message(message)
+          print("failure notification sent")
+          PY

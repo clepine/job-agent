@@ -1,0 +1,2808 @@
+# companies.yaml — curated board list (PLAN.md §6)
+#
+# Seeded by mining the apply URLs in the two zapplyjobs new-grad README tables,
+# then hand-extended with the Tier 1 / Tier 2 companies named in PLAN.md §1 and
+# the geography anchors in §4 (Draper, MITRE, Analog Devices, Qorvo, Wolfspeed,
+# Teradyne, Infineon, Raytheon, BAE, HPE, Lenovo, Red Hat, Motorola, Zebra...).
+#
+# Every entry under `boards:` was PROBED LIVE on 2026-08-18 and returned at
+# least one posting; `postings_at_validation` records how many. Entries under
+# `workday_boards:` carry real mined tenant|shard|site triples but are marked
+# valid: false because sources/workday.py is a deliberate stub — see that file
+# for what implementing it requires.
+#
+# Fields
+#   company  display name used in the email
+#   ats      greenhouse | lever | ashby | workday | smartrecruiters
+#   slug     board identifier; for workday it is "tenant|shard|site"
+#   track    software | hardware | both  (which resume to match against)
+#   tier     1 = FAANG+ and equivalent, 2 = strong but less competitive
+#   metros   observed/expected metros — informational; the real geography gate
+#            is the per-posting location filter in pipeline/geo.py
+#   valid    whether a fetcher exists AND the board answered at probe time
+#
+# Totals: 160 live boards + 148 stubbed Workday = 308 entries.
+
+boards:
+  - company: "OpenAI"
+    ats: ashby
+    slug: "openai"
+    track: software
+    tier: 1
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 732
+
+  - company: "Anduril"
+    ats: greenhouse
+    slug: "andurilindustries"
+    track: both
+    tier: 1
+    metros: ["Boston", "Seattle"]
+    valid: true
+    postings_at_validation: 2206
+
+  - company: "Anthropic"
+    ats: greenhouse
+    slug: "anthropic"
+    track: software
+    tier: 1
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 461
+
+  - company: "Jane Street"
+    ats: greenhouse
+    slug: "janestreet"
+    track: software
+    tier: 1
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 233
+
+  - company: "SpaceX"
+    ats: greenhouse
+    slug: "spacex"
+    track: both
+    tier: 1
+    metros: ["Austin", "Bay Area", "Seattle"]
+    valid: true
+    postings_at_validation: 2114
+
+  - company: "Waymo"
+    ats: greenhouse
+    slug: "waymo"
+    track: software
+    tier: 1
+    metros: ["Austin", "Bay Area", "Phoenix", "Seattle"]
+    valid: true
+    postings_at_validation: 369
+
+  - company: "Applied Intuition"
+    ats: ashby
+    slug: "applied"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 285
+
+  - company: "Baseten"
+    ats: ashby
+    slug: "baseten"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 72
+
+  - company: "Cerebras Systems"
+    ats: ashby
+    slug: "cerebras"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 123
+
+  - company: "Cognition"
+    ats: ashby
+    slug: "cognition"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 84
+
+  - company: "Decagon"
+    ats: ashby
+    slug: "decagon"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 134
+
+  - company: "ElevenLabs"
+    ats: ashby
+    slug: "elevenlabs"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 255
+
+  - company: "EliseAI"
+    ats: ashby
+    slug: "eliseai"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 104
+
+  - company: "Harvey"
+    ats: ashby
+    slug: "harvey"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 379
+
+  - company: "Hinge Health"
+    ats: ashby
+    slug: "hinge-health"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 71
+
+  - company: "LangChain"
+    ats: ashby
+    slug: "langchain"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Dallas", "NYC"]
+    valid: true
+    postings_at_validation: 108
+
+  - company: "Lovable"
+    ats: ashby
+    slug: "lovable"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: true
+    postings_at_validation: 77
+
+  - company: "Mercor"
+    ats: ashby
+    slug: "mercor"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 85
+
+  - company: "Modal"
+    ats: ashby
+    slug: "modal"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 31
+
+  - company: "Northwood Space"
+    ats: ashby
+    slug: "northwoodspace"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 71
+
+  - company: "Physical Intelligence"
+    ats: ashby
+    slug: "physicalintelligence"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 30
+
+  - company: "Radiant Industries"
+    ats: ashby
+    slug: "radiant-industries"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 93
+
+  - company: "Ramp"
+    ats: ashby
+    slug: "ramp"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 136
+
+  - company: "Rivian and Volkswagen Group Technologies"
+    ats: ashby
+    slug: "rivianvw.tech"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 115
+
+  - company: "Saronic Technologies"
+    ats: ashby
+    slug: "saronic"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: true
+    postings_at_validation: 218
+
+  - company: "Sierra"
+    ats: ashby
+    slug: "sierra"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 189
+
+  - company: "Standard Bots"
+    ats: ashby
+    slug: "standardbots"
+    track: hardware
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 34
+
+  - company: "Suno"
+    ats: ashby
+    slug: "suno"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: true
+    postings_at_validation: 60
+
+  - company: "Supabase"
+    ats: ashby
+    slug: "supabase"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 52
+
+  - company: "Accenture Federal Services"
+    ats: greenhouse
+    slug: "accenturefederalservices"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 624
+
+  - company: "Affirm"
+    ats: greenhouse
+    slug: "affirm"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 196
+
+  - company: "Airbnb"
+    ats: greenhouse
+    slug: "airbnb"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Seattle"]
+    valid: true
+    postings_at_validation: 199
+
+  - company: "Akuna Capital"
+    ats: greenhouse
+    slug: "akunacapital"
+    track: software
+    tier: 2
+    metros: ["Chicago"]
+    valid: true
+    postings_at_validation: 33
+
+  - company: "ALTEN Technology"
+    ats: greenhouse
+    slug: "altentechnologyusa"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 168
+
+  - company: "Antora Energy"
+    ats: greenhouse
+    slug: "antora"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 34
+
+  - company: "AppLovin"
+    ats: greenhouse
+    slug: "applovin"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 27
+
+  - company: "Apptronik"
+    ats: greenhouse
+    slug: "apptronik"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: true
+    postings_at_validation: 77
+
+  - company: "Armada"
+    ats: greenhouse
+    slug: "armada"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 66
+
+  - company: "Asana"
+    ats: greenhouse
+    slug: "asana"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 128
+
+  - company: "Brex"
+    ats: greenhouse
+    slug: "brex"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 303
+
+  - company: "Captivation"
+    ats: greenhouse
+    slug: "captivation"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 76
+
+  - company: "Cloudflare"
+    ats: greenhouse
+    slug: "cloudflare"
+    track: software
+    tier: 2
+    metros: ["Austin", "Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 299
+
+  - company: "Coinbase"
+    ats: greenhouse
+    slug: "coinbase"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 170
+
+  - company: "Databricks"
+    ats: greenhouse
+    slug: "databricks"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Seattle"]
+    valid: true
+    postings_at_validation: 807
+
+  - company: "Datadog"
+    ats: greenhouse
+    slug: "datadog"
+    track: software
+    tier: 2
+    metros: ["Boston", "NYC"]
+    valid: true
+    postings_at_validation: 424
+
+  - company: "DoorDash"
+    ats: greenhouse
+    slug: "doordashusa"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 461
+
+  - company: "Doximity"
+    ats: greenhouse
+    slug: "doximity"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 10
+
+  - company: "Duolingo"
+    ats: greenhouse
+    slug: "duolingo"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 64
+
+  - company: "Figma"
+    ats: greenhouse
+    slug: "figma"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 163
+
+  - company: "Figure AI"
+    ats: greenhouse
+    slug: "figureai"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 126
+
+  - company: "Flexport"
+    ats: greenhouse
+    slug: "flexport"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Chicago"]
+    valid: true
+    postings_at_validation: 160
+
+  - company: "General Matter"
+    ats: greenhouse
+    slug: "generalmatter"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 96
+
+  - company: "GitLab"
+    ats: greenhouse
+    slug: "gitlab"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 198
+
+  - company: "Harbinger Motors"
+    ats: greenhouse
+    slug: "harbingermotors"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 88
+
+  - company: "IMC Trading"
+    ats: greenhouse
+    slug: "imc"
+    track: software
+    tier: 2
+    metros: ["Chicago", "NYC"]
+    valid: true
+    postings_at_validation: 163
+
+  - company: "Instacart"
+    ats: greenhouse
+    slug: "instacart"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 113
+
+  - company: "IonQ"
+    ats: greenhouse
+    slug: "ionq"
+    track: hardware
+    tier: 2
+    metros: ["Seattle"]
+    valid: true
+    postings_at_validation: 100
+
+  - company: "Jump Trading"
+    ats: greenhouse
+    slug: "jumptrading"
+    track: software
+    tier: 2
+    metros: ["Austin", "Chicago", "NYC"]
+    valid: true
+    postings_at_validation: 108
+
+  - company: "Latitude AI"
+    ats: greenhouse
+    slug: "latitude"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 50
+
+  - company: "LG Electronics"
+    ats: greenhouse
+    slug: "lgelectronics"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 97
+
+  - company: "Lightmatter"
+    ats: greenhouse
+    slug: "lightmatter"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 65
+
+  - company: "Lucid Motors"
+    ats: greenhouse
+    slug: "lucidmotors"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area", "Phoenix"]
+    valid: true
+    postings_at_validation: 330
+
+  - company: "Lyft"
+    ats: greenhouse
+    slug: "lyft"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC", "Seattle"]
+    valid: true
+    postings_at_validation: 167
+
+  - company: "MongoDB"
+    ats: greenhouse
+    slug: "mongodb"
+    track: software
+    tier: 2
+    metros: ["Austin", "NYC"]
+    valid: true
+    postings_at_validation: 408
+
+  - company: "Muon Space"
+    ats: greenhouse
+    slug: "muonspace"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 100
+
+  - company: "Neros Technologies"
+    ats: greenhouse
+    slug: "nerostechnologies"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 64
+
+  - company: "Nuro"
+    ats: greenhouse
+    slug: "nuro"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 109
+
+  - company: "Oklo"
+    ats: greenhouse
+    slug: "oklo"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 62
+
+  - company: "Oura"
+    ats: greenhouse
+    slug: "oura"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 110
+
+  - company: "Pinterest"
+    ats: greenhouse
+    slug: "pinterest"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Chicago", "Seattle"]
+    valid: true
+    postings_at_validation: 218
+
+  - company: "Planet"
+    ats: greenhouse
+    slug: "planetlabs"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 79
+
+  - company: "Point72"
+    ats: greenhouse
+    slug: "point72"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 227
+
+  - company: "PsiQuantum"
+    ats: greenhouse
+    slug: "psiquantum"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area", "Chicago"]
+    valid: true
+    postings_at_validation: 72
+
+  - company: "Pure Storage"
+    ats: greenhouse
+    slug: "purestorage"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 290
+
+  - company: "Reddit"
+    ats: greenhouse
+    slug: "reddit"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 150
+
+  - company: "Redwood Materials"
+    ats: greenhouse
+    slug: "redwoodmaterials"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 151
+
+  - company: "Relativity Space"
+    ats: greenhouse
+    slug: "relativity"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 359
+
+  - company: "Robinhood"
+    ats: greenhouse
+    slug: "robinhood"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC", "Seattle"]
+    valid: true
+    postings_at_validation: 125
+
+  - company: "Rocket Lab"
+    ats: greenhouse
+    slug: "rocketlab"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 408
+
+  - company: "Samsara"
+    ats: greenhouse
+    slug: "samsara"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 264
+
+  - company: "Scale AI"
+    ats: greenhouse
+    slug: "scaleai"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "NYC"]
+    valid: true
+    postings_at_validation: 210
+
+  - company: "Stripe"
+    ats: greenhouse
+    slug: "stripe"
+    track: software
+    tier: 2
+    metros: ["Bay Area", "Chicago", "NYC", "Seattle"]
+    valid: true
+    postings_at_validation: 576
+
+  - company: "Tenstorrent"
+    ats: greenhouse
+    slug: "tenstorrent"
+    track: hardware
+    tier: 2
+    metros: ["Austin", "Bay Area"]
+    valid: true
+    postings_at_validation: 132
+
+  - company: "Varda Space"
+    ats: greenhouse
+    slug: "vardaspace"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 96
+
+  - company: "VAST"
+    ats: greenhouse
+    slug: "vast"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 167
+
+  - company: "Vercel"
+    ats: greenhouse
+    slug: "vercel"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 85
+
+  - company: "Verkada"
+    ats: greenhouse
+    slug: "verkada"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 288
+
+  - company: "xAI"
+    ats: greenhouse
+    slug: "xai"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 234
+
+  - company: "Actian"
+    ats: lever
+    slug: "actian"
+    track: software
+    tier: 2
+    metros: ["Austin"]
+    valid: true
+    postings_at_validation: 18
+
+  - company: "AHEAD"
+    ats: lever
+    slug: "thinkahead"
+    track: software
+    tier: 2
+    metros: ["Seattle"]
+    valid: true
+    postings_at_validation: 138
+
+  - company: "AI Fund"
+    ats: lever
+    slug: "AIFund"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 45
+
+  - company: "Bellese"
+    ats: lever
+    slug: "bellese"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 12
+
+  - company: "Belvedere Trading"
+    ats: lever
+    slug: "belvederetrading"
+    track: both
+    tier: 2
+    metros: ["Chicago"]
+    valid: true
+    postings_at_validation: 14
+
+  - company: "CertiK"
+    ats: lever
+    slug: "certik"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 27
+
+  - company: "CFS Energy"
+    ats: lever
+    slug: "cfsenergy"
+    track: hardware
+    tier: 2
+    metros: ["Boston"]
+    valid: true
+    postings_at_validation: 62
+
+  - company: "Fehr & Peers"
+    ats: lever
+    slug: "fehrandpeers"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 13
+
+  - company: "Field AI"
+    ats: lever
+    slug: "field-ai"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 123
+
+  - company: "FloQast"
+    ats: lever
+    slug: "floqast"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 21
+
+  - company: "Fullscript"
+    ats: lever
+    slug: "fullscript"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 17
+
+  - company: "Hermeus"
+    ats: lever
+    slug: "hermeus"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 84
+
+  - company: "hhaexchange"
+    ats: lever
+    slug: "hhaexchange"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 33
+
+  - company: "HighLevel"
+    ats: lever
+    slug: "gohighlevel"
+    track: software
+    tier: 2
+    metros: ["Dallas"]
+    valid: true
+    postings_at_validation: 79
+
+  - company: "Institute for Foundation Models"
+    ats: lever
+    slug: "ifm-us"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 44
+
+  - company: "Kitware"
+    ats: lever
+    slug: "kitware"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 14
+
+  - company: "Layup Parts"
+    ats: lever
+    slug: "layup"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 24
+
+  - company: "Life.Church (YouVersion)"
+    ats: lever
+    slug: "life"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 60
+
+  - company: "Lumafield"
+    ats: lever
+    slug: "lumafield"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: true
+    postings_at_validation: 16
+
+  - company: "Machina Labs"
+    ats: lever
+    slug: "MachinaLabs"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 25
+
+  - company: "Match Group"
+    ats: lever
+    slug: "matchgroup"
+    track: both
+    tier: 2
+    metros: ["Dallas", "NYC"]
+    valid: true
+    postings_at_validation: 79
+
+  - company: "Mercedes-Benz R&D North America"
+    ats: lever
+    slug: "MBRDNA"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 8
+
+  - company: "Multiply Labs"
+    ats: lever
+    slug: "multiplylabs"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 7
+
+  - company: "NimbleRx"
+    ats: lever
+    slug: "nimblerx"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 9
+
+  - company: "Palantir"
+    ats: lever
+    slug: "palantir"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Chicago", "NYC", "Seattle"]
+    valid: true
+    postings_at_validation: 308
+
+  - company: "Parallel Wireless"
+    ats: lever
+    slug: "parallelwireless"
+    track: hardware
+    tier: 2
+    metros: ["Boston"]
+    valid: true
+    postings_at_validation: 35
+
+  - company: "PingWind"
+    ats: lever
+    slug: "pingwind"
+    track: both
+    tier: 2
+    metros: ["Huntsville"]
+    valid: true
+    postings_at_validation: 55
+
+  - company: "Pivotal Software"
+    ats: lever
+    slug: "pivotal"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 25
+
+  - company: "PlusAI"
+    ats: lever
+    slug: "plus-2"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Dallas"]
+    valid: true
+    postings_at_validation: 37
+
+  - company: "PointClickCare"
+    ats: lever
+    slug: "pointclickcare"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 100
+
+  - company: "Qrypt"
+    ats: lever
+    slug: "qrypt"
+    track: both
+    tier: 2
+    metros: ["Austin"]
+    valid: true
+    postings_at_validation: 6
+
+  - company: "Rainmaker"
+    ats: lever
+    slug: "make-rain"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 33
+
+  - company: "Ranger"
+    ats: lever
+    slug: "ranger"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 4
+
+  - company: "Rigetti"
+    ats: lever
+    slug: "rigetti"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 13
+
+  - company: "Saviynt"
+    ats: lever
+    slug: "saviynt"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 110
+
+  - company: "Shield AI"
+    ats: lever
+    slug: "shieldai"
+    track: both
+    tier: 2
+    metros: ["Boston", "Dallas"]
+    valid: true
+    postings_at_validation: 436
+
+  - company: "SoloPulse"
+    ats: lever
+    slug: "solopulseco"
+    track: both
+    tier: 2
+    metros: ["Huntsville"]
+    valid: true
+    postings_at_validation: 10
+
+  - company: "Spotify"
+    ats: lever
+    slug: "spotify"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: true
+    postings_at_validation: 99
+
+  - company: "Sunwater Capital"
+    ats: lever
+    slug: "sunwatercapital"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 4
+
+  - company: "Synergy ECP"
+    ats: lever
+    slug: "synergyecp"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 48
+
+  - company: "Teleo"
+    ats: lever
+    slug: "teleo"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 11
+
+  - company: "Valkyrie Trading"
+    ats: lever
+    slug: "valkyrietrading"
+    track: software
+    tier: 2
+    metros: ["Chicago"]
+    valid: true
+    postings_at_validation: 6
+
+  - company: "Veeva Systems"
+    ats: lever
+    slug: "veeva"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Boston"]
+    valid: true
+    postings_at_validation: 838
+
+  - company: "Velo3D"
+    ats: lever
+    slug: "velo3d"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 36
+
+  - company: "Voltus"
+    ats: lever
+    slug: "voltus"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 15
+
+  - company: "Waabi"
+    ats: lever
+    slug: "waabi"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Dallas", "Phoenix"]
+    valid: true
+    postings_at_validation: 58
+
+  - company: "WeRide"
+    ats: lever
+    slug: "weride"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 30
+
+  - company: "Woven by Toyota"
+    ats: lever
+    slug: "woven-by-toyota"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 147
+
+  - company: "Xsolla"
+    ats: lever
+    slug: "xsolla"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 185
+
+  - company: "Zoox"
+    ats: lever
+    slug: "zoox"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 241
+
+  - company: "AbbVie"
+    ats: smartrecruiters
+    slug: "AbbVie"
+    track: both
+    tier: 2
+    metros: ["Austin", "Chicago"]
+    valid: true
+    postings_at_validation: 1716
+
+  - company: "Bosch Group"
+    ats: smartrecruiters
+    slug: "BoschGroup"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Boston"]
+    valid: true
+    postings_at_validation: 4797
+
+  - company: "BryceTech"
+    ats: smartrecruiters
+    slug: "BryceTech"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 30
+
+  - company: "Codeage"
+    ats: smartrecruiters
+    slug: "Codeage"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 3
+
+  - company: "Eurofins"
+    ats: smartrecruiters
+    slug: "Eurofins"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Boston", "RTP/Raleigh-Durham"]
+    valid: true
+    postings_at_validation: 2564
+
+  - company: "EVERSANA"
+    ats: smartrecruiters
+    slug: "EVERSANA1"
+    track: software
+    tier: 2
+    metros: ["Chicago"]
+    valid: true
+    postings_at_validation: 162
+
+  - company: "INFICON"
+    ats: smartrecruiters
+    slug: "INFICON2"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 40
+
+  - company: "Intuitive"
+    ats: smartrecruiters
+    slug: "Intuitive"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 651
+
+  - company: "LinkedIn"
+    ats: smartrecruiters
+    slug: "LinkedIn3"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 304
+
+  - company: "LLNL"
+    ats: smartrecruiters
+    slug: "llnl"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 152
+
+  - company: "NBCUniversal"
+    ats: smartrecruiters
+    slug: "NBCUniversal3"
+    track: both
+    tier: 2
+    metros: ["Dallas", "NYC"]
+    valid: true
+    postings_at_validation: 416
+
+  - company: "Northwestern Mutual"
+    ats: smartrecruiters
+    slug: "NorthwesternMutual"
+    track: both
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 69
+
+  - company: "Raytheon Technologies"
+    ats: smartrecruiters
+    slug: "RaytheonTechnologies"
+    track: both
+    tier: 2
+    metros: ["Dallas"]
+    valid: true
+    postings_at_validation: 18
+
+  - company: "RE/SPEC Inc."
+    ats: smartrecruiters
+    slug: "RESPECInc"
+    track: both
+    tier: 2
+    metros: ["Austin"]
+    valid: true
+    postings_at_validation: 89
+
+  - company: "Sandisk"
+    ats: smartrecruiters
+    slug: "Sandisk"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 293
+
+  - company: "ServiceNow"
+    ats: smartrecruiters
+    slug: "ServiceNow"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 504
+
+  - company: "Smiths Group"
+    ats: smartrecruiters
+    slug: "SmithsGroup2"
+    track: both
+    tier: 2
+    metros: ["Dallas"]
+    valid: true
+    postings_at_validation: 501
+
+  - company: "Solidigm"
+    ats: smartrecruiters
+    slug: "solidigm"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 52
+
+  - company: "Veolia Environnement SA"
+    ats: smartrecruiters
+    slug: "VeoliaEnvironnementSA"
+    track: both
+    tier: 2
+    metros: ["NYC", "Seattle"]
+    valid: true
+    postings_at_validation: 2928
+
+  - company: "Visa"
+    ats: smartrecruiters
+    slug: "Visa"
+    track: software
+    tier: 2
+    metros: ["Atlanta", "Austin", "Bay Area"]
+    valid: true
+    postings_at_validation: 2
+
+  - company: "Wellmark, Inc."
+    ats: smartrecruiters
+    slug: "WellmarkInc"
+    track: software
+    tier: 2
+    metros: []
+    valid: true
+    postings_at_validation: 34
+
+  - company: "Western Digital"
+    ats: smartrecruiters
+    slug: "WesternDigital"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: true
+    postings_at_validation: 371
+
+
+# ---------------------------------------------------------------------------
+# Workday boards. ~470 of the 1,056 rows in the source repos are Workday, which
+# makes this the single highest-value unimplemented source — and it is where
+# most of the PLAN.md §1 Tier-2 hardware names live (ADI, Qorvo, Wolfspeed,
+# Teradyne, Infineon, Raytheon, BAE, HPE, Lenovo). The slugs below are already
+# in the "tenant|shard|site" shape sources/workday.py expects, so enabling the
+# fetcher needs no re-mining.
+# ---------------------------------------------------------------------------
+
+workday_boards:
+  - company: "Apple"
+    ats: workday
+    slug: "apple|wd1|External"
+    track: both
+    tier: 1
+    metros: ["Austin", "Bay Area", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Microsoft"
+    ats: workday
+    slug: "microsoft|wd1|External"
+    track: both
+    tier: 1
+    metros: ["Bay Area", "Boston", "Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "NVIDIA"
+    ats: workday
+    slug: "nvidia|wd5|nvidiaexternalcareersite"
+    track: both
+    tier: 1
+    metros: ["Austin", "Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Nvidia"
+    ats: workday
+    slug: "nvidia|wd5|NVIDIAExternalCareerSite"
+    track: both
+    tier: 1
+    metros: ["Austin", "Bay Area", "Boston"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "ABB"
+    ats: workday
+    slug: "abb|wd3|external_career_page"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Abbott"
+    ats: workday
+    slug: "abbott|wd5|abbottcareers"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Aerospace Corporation"
+    ats: workday
+    slug: "aero|wd5|External"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "AeroVironment"
+    ats: workday
+    slug: "avav|wd1|AVAV"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Air Liquide"
+    ats: workday
+    slug: "airliquidehr|wd3|AirLiquideExternalCareer"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Allegion"
+    ats: workday
+    slug: "allegion|wd5|careers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Allison Transmission"
+    ats: workday
+    slug: "allisontransmission|wd1|ATI-External"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Altera"
+    ats: workday
+    slug: "altera|wd1|altera"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Amentum"
+    ats: workday
+    slug: "pae|wd1|amentum_careers"
+    track: both
+    tier: 2
+    metros: ["Boston", "NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Analog Devices"
+    ats: workday
+    slug: "analogdevices|wd1|External"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area", "Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Applied Materials"
+    ats: workday
+    slug: "amat|wd1|External"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Arrow Electronics"
+    ats: workday
+    slug: "arrow|wd1|AC"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "ASML"
+    ats: workday
+    slug: "asml|wd3|asmlext1"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "AspenTech"
+    ats: workday
+    slug: "aspentech|wd5|AspenTech"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "AstraZeneca"
+    ats: workday
+    slug: "astrazeneca|wd3|Careers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Astreya"
+    ats: workday
+    slug: "astreya|wd5|life-at-astreya-opportunities"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Autodesk"
+    ats: workday
+    slug: "autodesk|wd1|Ext"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Axiom Space"
+    ats: workday
+    slug: "axiomspace|wd5|External_Career_Site"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "BAE Systems"
+    ats: workday
+    slug: "baesystems|wd1|BAESystems"
+    track: hardware
+    tier: 2
+    metros: ["Boston", "Huntsville"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Barclays"
+    ats: workday
+    slug: "barclays|wd3|External_Career_Site_Barclays"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Baxter International"
+    ats: workday
+    slug: "baxter|wd1|baxter"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Becton Dickinson"
+    ats: workday
+    slug: "bdx|wd1|EXTERNAL_CAREER_SITE_USA"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "BlackRock"
+    ats: workday
+    slug: "blackrock|wd1|blackrock_professional"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Bloomberg"
+    ats: workday
+    slug: "bloomberg|wd1|Bloomberg_Careers"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Blue Origin"
+    ats: workday
+    slug: "blueorigin|wd5|blueorigin"
+    track: both
+    tier: 2
+    metros: ["Huntsville", "Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Boeing"
+    ats: workday
+    slug: "boeing|wd1|EXTERNAL_CAREERS"
+    track: both
+    tier: 2
+    metros: ["Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Booz Allen Hamilton"
+    ats: workday
+    slug: "bah|wd1|bah_jobs"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Boston Dynamics"
+    ats: workday
+    slug: "bostondynamics|wd1|Boston_Dynamics"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Bristol Myers Squibb"
+    ats: workday
+    slug: "bristolmyerssquibb|wd5|bms"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Broadcom"
+    ats: workday
+    slug: "broadcom|wd1|External_Career"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "CACI"
+    ats: workday
+    slug: "caci|wd1|External"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Capital One"
+    ats: workday
+    slug: "capitalone|wd12|Capital_One"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Cardinal Health"
+    ats: workday
+    slug: "cardinalhealth|wd1|EXT"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Carnegie Mellon University"
+    ats: workday
+    slug: "cmu|wd5|cmu"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Carrier Global"
+    ats: workday
+    slug: "carrier|wd5|jobs"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Caterpillar"
+    ats: workday
+    slug: "cat|wd5|caterpillarcareers"
+    track: both
+    tier: 2
+    metros: ["Dallas"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "CIBC"
+    ats: workday
+    slug: "cibc|wd3|search"
+    track: software
+    tier: 2
+    metros: ["Chicago"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Cigna"
+    ats: workday
+    slug: "cigna|wd5|cignacareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Cisco"
+    ats: workday
+    slug: "cisco|wd5|Cisco_Careers"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Dallas", "NYC", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Cisco"
+    ats: workday
+    slug: "cisco|wd1|CiscoCareers"
+    track: both
+    tier: 2
+    metros: ["Austin", "Bay Area", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Citi"
+    ats: workday
+    slug: "citi|wd5|2"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Clarios"
+    ats: workday
+    slug: "clarios|wd5|clarioscareers"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "CME Group"
+    ats: workday
+    slug: "cmegroup|wd1|cme_careers"
+    track: both
+    tier: 2
+    metros: ["Chicago"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Comcast"
+    ats: workday
+    slug: "comcast|wd5|Comcast_Careers"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Cox"
+    ats: workday
+    slug: "cox|wd1|Cox_External_Career_Site_1"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Crane Co."
+    ats: workday
+    slug: "cranecompany|wd5|Careers"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Curtiss-Wright"
+    ats: workday
+    slug: "curtisswright|wd1|CW_External_Career_Site"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "CVS Health"
+    ats: workday
+    slug: "cvshealth|wd1|CVS_Health_Careers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Daimler Truck"
+    ats: workday
+    slug: "dtna|wd5|DTNA_external"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Danaher"
+    ats: workday
+    slug: "danaher|wd1|danaherjobs"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Deluxe Corp"
+    ats: workday
+    slug: "deluxe|wd5|USA_CAN"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Dexcom"
+    ats: workday
+    slug: "dexcom|wd1|Dexcom"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Disney"
+    ats: workday
+    slug: "disney|wd5|disneycareer"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Dow Jones"
+    ats: workday
+    slug: "dowjones|wd1|Dow_Jones_Career"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Draper"
+    ats: workday
+    slug: "draper|wd5|Draper_Careers"
+    track: both
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Draper"
+    ats: workday
+    slug: "draper|wd5|Draper_External_Career_Site"
+    track: hardware
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Eversource Energy"
+    ats: workday
+    slug: "eversource|wd1|ExternalSite"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "F5"
+    ats: workday
+    slug: "ffive|wd5|f5jobs"
+    track: software
+    tier: 2
+    metros: ["Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Fiserv"
+    ats: workday
+    slug: "fiserv|wd5|ext"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "FLIR Systems"
+    ats: workday
+    slug: "flir|wd1|flircareers"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Freddie Mac"
+    ats: workday
+    slug: "freddiemac|wd5|External"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "GDIT"
+    ats: workday
+    slug: "gdit|wd5|external_career_site"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "GE Aerospace"
+    ats: workday
+    slug: "geaerospace|wd5|GE_ExternalSite"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "GE Healthcare"
+    ats: workday
+    slug: "gehc|wd5|GEHC_ExternalSite"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "GE Vernova"
+    ats: workday
+    slug: "gevernova|wd5|Vernova_ExternalSite"
+    track: both
+    tier: 2
+    metros: ["Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Generac"
+    ats: workday
+    slug: "generac|wd5|External"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "General Motors"
+    ats: workday
+    slug: "generalmotors|wd5|Careers_GM"
+    track: both
+    tier: 2
+    metros: ["Austin", "Bay Area", "NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "GlobalFoundries"
+    ats: workday
+    slug: "globalfoundries|wd1|External"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Guidehouse"
+    ats: workday
+    slug: "guidehouse|wd1|External"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Hitachi"
+    ats: workday
+    slug: "hitachi|wd1|hitachi"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Honeywell"
+    ats: workday
+    slug: "honeywell|wd1|Careers"
+    track: both
+    tier: 2
+    metros: ["Charlotte", "Phoenix"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "HP Inc"
+    ats: workday
+    slug: "hp|wd5|ExternalCareerSite"
+    track: both
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "HPE"
+    ats: workday
+    slug: "hpe|wd5|acjobsite"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "HPE (University)"
+    ats: workday
+    slug: "hpe|wd5|Jobsathpe"
+    track: hardware
+    tier: 2
+    metros: ["Bay Area", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "IBM"
+    ats: workday
+    slug: "ibmglobal|wd5|IBM_Global_Careers"
+    track: both
+    tier: 2
+    metros: ["Austin", "NYC", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "ICF"
+    ats: workday
+    slug: "icf|wd5|ICFExternal_Career_Site"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Infineon"
+    ats: workday
+    slug: "infineon|wd3|Infineon_Careers"
+    track: hardware
+    tier: 2
+    metros: ["Austin", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Intel"
+    ats: workday
+    slug: "intel|wd1|External"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Phoenix"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Invesco"
+    ats: workday
+    slug: "invesco|wd1|IVZ"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Jabil"
+    ats: workday
+    slug: "jabil|wd5|Jabil_Careers"
+    track: hardware
+    tier: 2
+    metros: ["Dallas"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "JLL"
+    ats: workday
+    slug: "jll|wd1|jllcareers"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Johnson & Johnson"
+    ats: workday
+    slug: "jj|wd5|jj"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Johnson Controls"
+    ats: workday
+    slug: "jci|wd5|JCI"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "KBR"
+    ats: workday
+    slug: "kbr|wd5|KBR_Careers"
+    track: both
+    tier: 2
+    metros: ["Dallas", "Huntsville", "Phoenix"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "KeyBank"
+    ats: workday
+    slug: "keybank|wd5|External_Career_Site"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "KION Group"
+    ats: workday
+    slug: "kiongroup|wd3|kiongroup"
+    track: hardware
+    tier: 2
+    metros: ["Dallas"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "KLA"
+    ats: workday
+    slug: "kla|wd1|Search"
+    track: both
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "LabCorp"
+    ats: workday
+    slug: "labcorp|wd1|external"
+    track: software
+    tier: 2
+    metros: ["RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Leidos"
+    ats: workday
+    slug: "leidos|wd5|External"
+    track: both
+    tier: 2
+    metros: ["Huntsville"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Lenovo"
+    ats: workday
+    slug: "lenovo|wd1|Lenovo_External"
+    track: both
+    tier: 2
+    metros: ["RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "LexisNexis Risk Solutions"
+    ats: workday
+    slug: "relx|wd3|RiskSolutions"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "LPL Financial"
+    ats: workday
+    slug: "lplfinancial|wd1|university"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Magna"
+    ats: workday
+    slug: "magna|wd3|Magna"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Manulife"
+    ats: workday
+    slug: "manulife|wd3|MFCJH_Jobs"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Mastercard"
+    ats: workday
+    slug: "mastercard|wd1|CorporateCareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Medtronic"
+    ats: workday
+    slug: "medtronic|wd1|MedtronicCareers"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Merck & Co."
+    ats: workday
+    slug: "msd|wd5|SearchJobs"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Microchip Technology"
+    ats: workday
+    slug: "microchiphr|wd5|External"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Micron Technology"
+    ats: workday
+    slug: "micron|wd1|external"
+    track: both
+    tier: 2
+    metros: ["Bay Area", "Dallas"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "MITRE"
+    ats: workday
+    slug: "mitre|wd5|MITRE"
+    track: both
+    tier: 2
+    metros: ["Boston", "NYC"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Moog"
+    ats: workday
+    slug: "moog|wd5|moog_external_career_site"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Morgan Stanley"
+    ats: workday
+    slug: "ms|wd5|External"
+    track: software
+    tier: 2
+    metros: ["NYC"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Motorola Solutions"
+    ats: workday
+    slug: "motorolasolutions|wd5|Careers"
+    track: both
+    tier: 2
+    metros: ["Chicago"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Motorola Solutions"
+    ats: workday
+    slug: "motorolasolutions|wd1|Careers"
+    track: both
+    tier: 2
+    metros: ["Chicago"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Nasdaq"
+    ats: workday
+    slug: "nasdaq|wd1|Global_External_Site"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "National Interstate Insurance"
+    ats: workday
+    slug: "gaig|wd1|GAIG_External"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "NCR Voyix"
+    ats: workday
+    slug: "ncr|wd1|ext_us"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Northrop Grumman"
+    ats: workday
+    slug: "ngc|wd1|Northrop_Grumman_External_Site"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "NXP"
+    ats: workday
+    slug: "nxp|wd3|Careers"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Palo Alto Networks"
+    ats: workday
+    slug: "paloaltonetworks|wd5|panwexternalcareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Parsons"
+    ats: workday
+    slug: "parsons|wd5|search"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "PayPal"
+    ats: workday
+    slug: "paypal|wd1|jobs"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Penn State University"
+    ats: workday
+    slug: "psu|wd1|Student"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Pfizer"
+    ats: workday
+    slug: "pfizer|wd1|PfizerCareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "PNC Financial Services"
+    ats: workday
+    slug: "pnc|wd5|External"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Q2"
+    ats: workday
+    slug: "q2ebanking|wd5|Q2"
+    track: software
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Qorvo"
+    ats: workday
+    slug: "qorvo|wd1|Qorvo_Careers"
+    track: hardware
+    tier: 2
+    metros: ["RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Radiance Technologies"
+    ats: workday
+    slug: "radiancetech|wd12|Radiance_External"
+    track: hardware
+    tier: 2
+    metros: ["Huntsville"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Raymond James Financial"
+    ats: workday
+    slug: "raymondjames|wd1|RaymondJamesCareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Raytheon (RTX)"
+    ats: workday
+    slug: "rtx|wd1|REC"
+    track: hardware
+    tier: 2
+    metros: ["Boston", "Dallas", "Huntsville"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Red Hat"
+    ats: workday
+    slug: "redhat|wd5|Jobs"
+    track: software
+    tier: 2
+    metros: ["Boston", "RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Regal Rexnord"
+    ats: workday
+    slug: "regalrexnord|wd1|careers"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "RTX"
+    ats: workday
+    slug: "globalhr|wd5|rec_rtx_ext_gateway"
+    track: both
+    tier: 2
+    metros: ["Boston", "Dallas", "Huntsville"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Schweitzer Engineering Laboratories"
+    ats: workday
+    slug: "selinc|wd1|SEL"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Siemens Energy"
+    ats: workday
+    slug: "siemensenergy|wd3|SE_External"
+    track: hardware
+    tier: 2
+    metros: ["Charlotte"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Sierra Nevada Corporation"
+    ats: workday
+    slug: "snc|wd1|SNC_External_Career_Site"
+    track: both
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Silicon Labs"
+    ats: workday
+    slug: "silabs|wd1|SiliconlabsCareers"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Sonos"
+    ats: workday
+    slug: "sonos|wd1|Sonos"
+    track: software
+    tier: 2
+    metros: ["Seattle"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Sony"
+    ats: workday
+    slug: "sonyglobal|wd1|sonyglobalcareers"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "SS&C Technologies"
+    ats: workday
+    slug: "ssctech|wd1|ssctechnologies"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "State Street"
+    ats: workday
+    slug: "statestreet|wd1|Global"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Symbotic"
+    ats: workday
+    slug: "symbotic|wd504|Symbotic"
+    track: both
+    tier: 2
+    metros: ["Austin", "Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "TD Synnex"
+    ats: workday
+    slug: "synnex|wd5|tdsynnexcareers"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Teradyne"
+    ats: workday
+    slug: "teradyne|wd1|TeradyneCareers"
+    track: hardware
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "The Federal Reserve System"
+    ats: workday
+    slug: "rb|wd5|FRS"
+    track: hardware
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "The Travelers Companies"
+    ats: workday
+    slug: "travelers|wd5|External"
+    track: software
+    tier: 2
+    metros: []
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Thermo Fisher Scientific"
+    ats: workday
+    slug: "thermofisher|wd5|ThermoFisherCareers"
+    track: hardware
+    tier: 2
+    metros: ["Austin"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Vanguard"
+    ats: workday
+    slug: "vanguard|wd5|vanguard_external"
+    track: both
+    tier: 2
+    metros: ["Charlotte"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Verizon"
+    ats: workday
+    slug: "verizon|wd12|verizon-careers"
+    track: software
+    tier: 2
+    metros: ["Dallas"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Vertex Pharmaceuticals"
+    ats: workday
+    slug: "vrtx|wd501|vertex_careers"
+    track: software
+    tier: 2
+    metros: ["Boston"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Visa"
+    ats: workday
+    slug: "visa|wd5|Visa"
+    track: software
+    tier: 2
+    metros: ["Bay Area"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Wells Fargo"
+    ats: workday
+    slug: "wf|wd1|wellsfargojobs"
+    track: software
+    tier: 2
+    metros: ["Charlotte"]
+    valid: false
+    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+
+  - company: "Wolfspeed"
+    ats: workday
+    slug: "wolfspeed|wd1|Wolfspeed_Careers"
+    track: hardware
+    tier: 2
+    metros: ["RTP/Raleigh-Durham"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+
+  - company: "Zebra Technologies"
+    ats: workday
+    slug: "zebra|wd1|ZebraCareers"
+    track: both
+    tier: 2
+    metros: ["Chicago"]
+    valid: false
+    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
