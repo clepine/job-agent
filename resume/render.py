@@ -27,6 +27,9 @@ from typing import Any
 import yaml
 from fpdf import FPDF
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from pipeline.resumes import skill_groups  # noqa: E402
+
 # Core PDF fonts are Latin-1. Rather than embed a Unicode TTF (which some ATS
 # parsers handle badly), fold the handful of typographic characters that appear
 # in the source resumes down to their ASCII equivalents.
@@ -141,11 +144,11 @@ def render(resume: dict, out_path: str | Path, *, coursework_complete: bool = Fa
             _line(pdf, f"In Progress ({term}): {_joined(in_progress)}", size=8.9)
 
     # --- skills ---
-    skills = resume.get("skills") or {}
-    if skills:
+    # Labels are printed VERBATIM from the YAML, never derived from a key.
+    groups = skill_groups(resume)
+    if groups:
         _section(pdf, "Technical Skills")
-        for group, items in skills.items():
-            label = group.replace("_", " ").title()
+        for label, items in groups:
             _line(pdf, f"{label}: {_joined(items)}", size=8.9, gap=0.35)
 
     # --- experience ---

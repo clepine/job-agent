@@ -19,6 +19,7 @@ from collections import Counter
 from typing import Iterable, Sequence
 
 from .models import Job
+from .resumes import skill_groups
 
 _TOKEN = re.compile(r"[a-z0-9][a-z0-9+#./_-]*")
 
@@ -79,11 +80,11 @@ def resume_query(resume: dict) -> list[str]:
     what should drive the match, not its verbs.
     """
     parts: list[str] = []
-    for group in (resume.get("skills") or {}).values():
-        items = group if isinstance(group, list) else [group]
+    for _label, items in skill_groups(resume):
+        # Weight x3: the resume's concrete nouns should drive the match.
         parts.extend(str(i) for i in items)
-        parts.extend(str(i) for i in items)  # weight x2
-        parts.extend(str(i) for i in items)  # weight x3
+        parts.extend(str(i) for i in items)
+        parts.extend(str(i) for i in items)
     for section in ("experience", "projects"):
         for entry in resume.get(section) or []:
             parts.append(str(entry.get("title", "")))

@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+
+from .resumes import skill_items
 from typing import Iterable
 
 # ---------------------------------------------------------------------------
@@ -176,10 +178,8 @@ VOCAB: dict[str, tuple[str, ...]] = {
 def _harvest_from_resume(resume: dict) -> set[str]:
     """Everything the resume already claims, lowercased for matching."""
     have: set[str] = set()
-    for group in (resume.get("skills") or {}).values():
-        items = group if isinstance(group, list) else [group]
-        for item in items:
-            have.add(str(item).strip().lower())
+    for item in skill_items(resume):
+        have.add(str(item).strip().lower())
     edu = resume.get("education") or {}
     for key in ("coursework", "in_progress"):
         for course in edu.get(key) or []:

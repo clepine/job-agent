@@ -354,7 +354,7 @@ def test_substantive_resume_edits_do_invalidate_scores(resume_sw):
 
     before = resume_hash(resume_sw)
     for mutate in (
-        lambda r: r["skills"]["languages"].append("Rust"),
+        lambda r: r["skills"][0]["items"].append("Rust"),
         lambda r: r["education"]["coursework"].append("Operating Systems"),
         lambda r: r["projects"].pop(),
         lambda r: r["experience"][0]["subsections"][0]["bullets"].append("New bullet."),

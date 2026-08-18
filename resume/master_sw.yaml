@@ -42,32 +42,39 @@ education:
   in_progress_term: Fall 2026
   in_progress_completes: 2026-12
 
+# `label` is the header printed on the PDF and must match the source resume
+# VERBATIM. It is never derived from a key — deriving it silently dropped the
+# "&" from three of these four headers.
 skills:
-  languages:
-    - C
-    - C++
-    - Java
-    - Python
-    - PowerShell
-  frameworks_libraries:
-    - LangChain
-    - LiteLLM
-    - Pydantic
-    - Posh-ACME
-  tools_platforms:
-    - Git
-    - GitHub
-    - VS Code
-    - Wireshark
-    - IBM HTTP Server
-    - GSKit
-    - Ollama
-  cloud_infrastructure:
-    - AWS
-    - Azure
-    - Google Cloud
-    - Cloudflare (DNS/ACME integrations)
-    - TLS/PKI
+  - label: "Languages"
+    items:
+      - C
+      - C++
+      - Java
+      - Python
+      - PowerShell
+  - label: "Frameworks & Libraries"
+    items:
+      - LangChain
+      - LiteLLM
+      - Pydantic
+      - Posh-ACME
+  - label: "Tools & Platforms"
+    items:
+      - Git
+      - GitHub
+      - VS Code
+      - Wireshark
+      - IBM HTTP Server
+      - GSKit
+      - Ollama
+  - label: "Cloud & Infrastructure"
+    items:
+      - AWS
+      - Azure
+      - Google Cloud
+      - Cloudflare (DNS/ACME integrations)
+      - TLS/PKI
 
 experience:
   - company: IBM

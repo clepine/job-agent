@@ -178,6 +178,29 @@ def main(argv: list[str] | None = None) -> int:
                 re_rejected += 1
                 stage_counts[result.stage] = stage_counts.get(result.stage, 0) + 1
         print(f"rejected on description/title: {re_rejected}")
+
+        # Hydration rewrites truncated aggregator titles and locations, which
+        # changes a job's fuzzy dedupe key AFTER the pre-fetch dedupe already
+        # ran. Without this second pass, "Analog/Mixed-Signal Circuit Design
+        # En..." and its hydrated full title become two separate rows, and the
+        # owner sees the same job twice on different days.
+        known_ids_now = db.known_ids(conn)
+        known_keys_now = db.known_dedupe_keys(conn)
+        deduped: list[Job] = []
+        post_hydration_dupes = 0
+        for job in survivors:
+            key = "|".join(job.dedupe_key)
+            if job.id in known_ids_now or (key.strip("|") and key in known_keys_now):
+                post_hydration_dupes += 1
+                continue
+            known_ids_now.add(job.id)
+            if key.strip("|"):
+                known_keys_now.add(key)
+            deduped.append(job)
+        if post_hydration_dupes:
+            print(f"post-hydration duplicates dropped: {post_hydration_dupes}")
+        survivors = deduped
+
         print(f"SURVIVORS             : {len(survivors)}")
         by_track = {t: sum(1 for j in survivors if j.track == t) for t in ("software", "hardware")}
         by_class = {}

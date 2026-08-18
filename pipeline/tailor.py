@@ -46,6 +46,7 @@ from .config import load_config, repo_path
 from .jd import compress_jd
 from .llm import LlmClient
 from .models import Job
+from .resumes import set_skill_items, skill_groups, skill_items
 
 # ---------------------------------------------------------------------------
 # Honesty validator
@@ -92,12 +93,7 @@ def _blob(node: Any, parts: Optional[list[str]] = None) -> str:
 
 
 def master_skill_items(resume: dict) -> set[str]:
-    out: set[str] = set()
-    for group in (resume.get("skills") or {}).values():
-        items = group if isinstance(group, list) else [group]
-        for item in items:
-            out.add(str(item).strip().lower())
-    return out
+    return {str(item).strip().lower() for item in skill_items(resume)}
 
 
 def master_bullets(resume: dict) -> list[str]:
@@ -172,7 +168,7 @@ def validate_tailored(
     violations: list[Violation] = []
     master_blob = _blob(master)
     master_bullet_norms = {_normalize(b): b for b in master_bullets(master)}
-    skill_items = master_skill_items(master)
+    master_skills = master_skill_items(master)   # not `skill_items` — that name is the imported helper
     jd_lower = (jd_text or "").lower()
 
     # --- renames --------------------------------------------------------
@@ -182,7 +178,7 @@ def validate_tailored(
         dst = str(rename.get("to", "")).strip()
         if not src or not dst:
             continue
-        if src.lower() not in skill_items:
+        if src.lower() not in master_skills:
             violations.append(
                 Violation("bad_rename", f"renames {src!r}, which is not a master skill")
             )
@@ -198,7 +194,7 @@ def validate_tailored(
             continue
         renames[src.lower()] = dst
 
-    allowed_skill_strings = skill_items | {v.lower() for v in renames.values()}
+    allowed_skill_strings = master_skills | {v.lower() for v in renames.values()}
 
     # --- skills ---------------------------------------------------------
     for group, items in (tailored.get("skills") or {}).items():
@@ -287,10 +283,10 @@ def apply_tailoring(master: dict, tailored: dict) -> dict:
         entry["bullets"] = swap(entry.get("bullets"))
 
     # Skills: apply renames, then reorder within each group per skill_order.
+    # Category LABELS are never touched — they are verbatim source text.
     order = [str(s).strip().lower() for s in (tailored.get("skill_order") or [])]
-    for group, items in (result.get("skills") or {}).items():
-        values = [str(i) for i in (items if isinstance(items, list) else [items])]
-        values = [renames.get(v.lower(), v) for v in values]
+    for label, items in skill_groups(result):
+        values = [renames.get(str(v).lower(), str(v)) for v in items]
         if order:
             def rank(value: str) -> int:
                 low = value.lower()
@@ -299,7 +295,7 @@ def apply_tailoring(master: dict, tailored: dict) -> dict:
                         return idx
                 return len(order) + 1
             values.sort(key=rank)
-        result["skills"][group] = values
+        set_skill_items(result, label, values)
 
     # Project/experience ordering: promote entries the model flagged, never add.
     promote = [str(p).strip().lower() for p in (tailored.get("promote_projects") or [])]

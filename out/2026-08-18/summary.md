@@ -4,10 +4,10 @@
 
 | metric | value |
 |---|---|
-| boards fetched | 0 (0 failed) |
-| postings pulled | 1055 |
-| new after dedupe | 871 |
-| survived hard filters | 26 |
+| boards fetched | 160 (0 failed) |
+| postings pulled | 29893 |
+| new after dedupe | 28291 |
+| survived hard filters | 761 |
 | newly scored | 0 |
 | software selected | 0 |
 | hardware selected | 0 |

@@ -149,7 +149,9 @@ def test_rename_target_must_appear_in_the_job_description(resume_hw):
 # --- term extraction sanity ------------------------------------------------
 
 def test_ordinary_english_is_not_flagged(resume_sw):
-    blob = " ".join(str(v) for v in resume_sw.get("skills", {}).values())
+    from pipeline.resumes import skill_items
+
+    blob = " ".join(skill_items(resume_sw))
     assert find_new_terms("Collaborated closely with the team to deliver on time.", blob.lower()) == []
 
 
@@ -162,11 +164,14 @@ def test_roman_numerals_and_common_acronyms_not_flagged(resume_sw):
 # --- apply_tailoring is structurally additive-proof ------------------------
 
 def test_apply_never_adds_bullets_or_skills(resume_hw):
+    from pipeline.resumes import skill_groups
+
     def count(resume):
         return (
             len(master_bullets(resume)),
-            sum(len(v) for v in resume["skills"].values()),
+            sum(len(items) for _label, items in skill_groups(resume)),
             len(resume.get("projects") or []),
+            [label for label, _ in skill_groups(resume)],   # labels must be untouched
         )
 
     tailored = {

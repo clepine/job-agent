@@ -44,38 +44,45 @@ education:
   in_progress_term: Fall 2026
   in_progress_completes: 2026-12
 
+# `label` is the header printed on the PDF and must match the source resume
+# VERBATIM. It is never derived from a key — deriving it silently dropped the
+# "&" from three of these four headers.
 skills:
-  hardware_digital_design:
-    - Verilog
-    - PCB layout (KiCad)
-    - surface-mount soldering
-    - H-bridge motor drive
-    - ADCs
-    - timers
-    - interrupts
-  test_lab_equipment:
-    - Oscilloscopes
-    - logic analyzers
-    - multimeters
-    - Analog Discovery 3
-    - Waveforms
-    - datasheet-driven bring-up
-  languages:
-    - C
-    - C++
-    - Assembly
-    - Python
-    - Java
-    - PowerShell
-  software_tools:
-    - Code Composer Studio
-    - MATLAB
-    - Wireshark
-    - Git
-    - GitHub
-    - VS Code
-    - CLion
-    - NVIDIA DeepStream SDK
+  - label: "Hardware & Digital Design"
+    items:
+      - Verilog
+      - PCB layout (KiCad)
+      - surface-mount soldering
+      - H-bridge motor drive
+      - ADCs
+      - timers
+      - interrupts
+  - label: "Test & Lab Equipment"
+    items:
+      - Oscilloscopes
+      - logic analyzers
+      - multimeters
+      - Analog Discovery 3
+      - Waveforms
+      - datasheet-driven bring-up
+  - label: "Languages"
+    items:
+      - C
+      - C++
+      - Assembly
+      - Python
+      - Java
+      - PowerShell
+  - label: "Software & Tools"
+    items:
+      - Code Composer Studio
+      - MATLAB
+      - Wireshark
+      - Git
+      - GitHub
+      - VS Code
+      - CLion
+      - NVIDIA DeepStream SDK
 
 experience:
   - company: IBM

@@ -21,6 +21,7 @@ from typing import Iterable, Sequence
 from .jd import compress_jd
 from .llm import BudgetExceeded, LlmClient, Usage
 from .models import Job
+from .resumes import skill_groups
 
 SYSTEM_TEMPLATE = """You score new-grad engineering job postings against one candidate's resume.
 
@@ -88,10 +89,8 @@ def resume_summary(resume: dict) -> str:
             f"{edu.get('in_progress_completes','')}): "
             + ", ".join(edu["in_progress"])
         )
-    for group, items in (resume.get("skills") or {}).items():
-        label = group.replace("_", " ").title()
-        values = items if isinstance(items, list) else [items]
-        lines.append(f"{label}: " + ", ".join(str(v) for v in values))
+    for label, items in skill_groups(resume):
+        lines.append(f"{label}: " + ", ".join(str(v) for v in items))
     for entry in resume.get("experience") or []:
         head = f"{entry.get('title','')} @ {entry.get('company','')} ({entry.get('dates','')})"
         lines.append(head)

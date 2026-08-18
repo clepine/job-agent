@@ -35,7 +35,7 @@ them in your shell. Nothing in this codebase logs, prints, or commits a secret.
 
 | Variable | Needed for | Notes |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | scoring, tailoring | Without it, scoring is skipped and the email is built from scores already in `state.db`. The pipeline never fails just because the key is absent. |
+| `ANTHROPIC_API_KEY` | scoring, tailoring | Without it, scoring is skipped and the email is built from scores already on record. The pipeline never fails just because the key is absent. |
 | `GMAIL_ADDRESS` | sending | The Gmail account that sends the mail. |
 | `GMAIL_APP_PASSWORD` | sending | A Google **app password**, not your account password. Requires 2FA: Google Account → Security → 2-Step Verification → App passwords. |
 
@@ -69,6 +69,23 @@ python run.py --skip-boards       # aggregator repos only
 python run.py --skip-repos        # curated ATS boards only
 python run.py --no-mark-shown     # send, but let the same jobs reappear tomorrow
 ```
+
+### State
+
+Two files, deliberately split:
+
+| File | Role | Committed? |
+|---|---|---|
+| `state.db` | local SQLite working store | **no** — gitignored |
+| `state/seen_jobs.json` | the real ledger: sorted, one object per job | **yes** |
+
+SQLite is rewritten in full every run and delta-compresses poorly, so
+committing it would add a fresh binary copy to history ~250 times a year to
+track what is really a list of job IDs. The committed artifact is a sorted JSON
+file instead, so a normal day's diff is a few added objects and a few
+`shown_at` flips. The run hydrates SQLite from it on start and writes it back at
+the end. Descriptions are not persisted there — the ten jobs in today's email
+have theirs re-fetched over free HTTP at send time.
 
 ### Resumes
 
@@ -121,9 +138,17 @@ fetch ─→ normalize ─→ dedupe ─→ hard-filter ─→ hydrate ─→ re
 
 **Score-once is the central cost decision.** A posting's fit against a fixed
 resume does not change between days, so it is scored the first time it survives
-the filters and the result is persisted in `state.db`. The daily pick reads
-scores out of SQLite and calls nothing. A steady-state run scores only the
-~10-15 postings that are genuinely new.
+the filters and the result is persisted. The daily pick reads scores out of
+SQLite and calls nothing. A steady-state run scores only the ~10-15 postings
+that are genuinely new.
+
+**Scores expire when the resume changes.** Each score is stamped with a
+fingerprint of the resume it was computed against (`pipeline/fingerprint.py`),
+covering only what actually feeds a score — skills, experience, projects,
+coursework. Edit a skill and every affected score is re-queued; fix a typo in
+your phone number and nothing is. If an edit invalidates more than one run's
+budget allows, the highest-scoring jobs are re-scored first and the rest carry
+to later runs — never an abort, never a budget blowout.
 
 ---
 
@@ -270,9 +295,18 @@ costs a couple of seconds. Using the tz database rather than hardcoded dates
 means a future change to the DST rules is handled for free.
 
 The workflow runs the test suite before the pipeline and will not send an email
-if the filters regress. It commits `state.db` and `out/<date>/` back to the repo
-on every run — that is the agent's memory; without it, every run would re-send
-yesterday's matches.
+if the filters regress. It commits `state/seen_jobs.json` and `out/<date>/` back
+to the repo on every run — that is the agent's memory; without it, every run
+would re-send yesterday's matches.
+
+**Failure is loud, not silent.** The realistic way this project dies is that a
+board changes its API, runs start failing, and the owner just stops getting
+email and assumes there were no matches. So a failed run emails him directly
+(`if: failure()`, `continue-on-error` so the notifier can never mask the real
+error), and every successful run writes a summary to the Actions job summary
+that says explicitly when zero jobs matched. "Nothing matched" and "the job
+never ran" are never confusable. GitHub also disables scheduled workflows after
+60 days of repository inactivity — the failure email says so.
 
 ---
 
@@ -282,7 +316,7 @@ yesterday's matches.
 python -m pytest tests/ -q
 ```
 
-158 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
+196 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
 fixture removes `ANTHROPIC_API_KEY` from the environment for the whole run, so
 a code path that accidentally constructs a real client fails loudly instead of
 silently spending. Every LLM stage is exercised against `StubAnthropic`.
@@ -297,6 +331,18 @@ Project Manager, Fire Sprinklers".
 *Must keep* — "ASIC Verification Engineer" (HPE Durham), "FPGA Engineer"
 (Belvedere Chicago), "Mixed Signal Electronic Design Engineer" (Draper
 Cambridge).
+
+`tests/test_render_fidelity.py` is both the resume-fidelity check and the
+**ATS guarantee**. It renders each master, extracts the text layer from the
+actual PDF bytes, and asserts that every section heading, skill category label,
+skill item, and bullet appears verbatim, in correct reading order, with no
+images and no embedded font subsets. Text that extracts cleanly in reading
+order is exactly what an ATS parser consumes.
+
+Skill categories carry an explicit `label` in the YAML that is printed
+verbatim. They are never derived from a key — deriving them by title-casing a
+snake_case key silently turned "Frameworks & Libraries" into "Frameworks
+Libraries" on a document that goes to employers.
 
 ---
 
