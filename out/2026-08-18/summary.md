@@ -1,19 +1,16 @@
 # Job agent run — 2026-08-18
 
-**ZERO MATCHES — the pipeline ran to completion and found nothing to send.**
+**Sent 5 software + 5 hardware.**
 
 | metric | value |
 |---|---|
-| boards fetched | 0 (0 failed) |
-| postings pulled | 0 |
-| new after dedupe | 0 |
-| survived hard filters | 0 |
-| newly scored | 0 |
-| software selected | 0 |
-| hardware selected | 0 |
-| estimated cost | $0.0000 |
-| backlog (scored, unshown) | 0 |
+| boards fetched | 160 (0 failed) |
+| postings pulled | 29906 |
+| new after dedupe | 27540 |
+| survived hard filters | 3 |
+| newly scored | 40 |
+| software selected | 5 |
+| hardware selected | 5 |
+| estimated cost | $0.0757 |
+| backlog (scored, unshown) | 30 |
 
-- note: Scoring was skipped for this run (--no-llm).
-- note: Only 0 software matches available to send today (wanted 5). run.py diagnoses why — a short list can mean unscored backlog, an exhausted pool, or a genuine drought, and these are not the same problem.
-- note: Only 0 hardware matches available to send today (wanted 5). run.py diagnoses why — a short list can mean unscored backlog, an exhausted pool, or a genuine drought, and these are not the same problem.
