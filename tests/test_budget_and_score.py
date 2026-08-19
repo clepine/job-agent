@@ -520,6 +520,17 @@ def test_tier1_still_wins_its_slot_when_it_clears_the_floor(cfg):
 
 
 def test_benched_tier1_is_explained_not_silently_dropped(cfg):
+    """A Tier 1 role that loses its slot on fit must SAY so, on any day.
+
+    Two different settings can bench it — email.min_fit drops it outright and
+    email.tier1_min_fit merely benches it — so this asserts the guarantee
+    rather than one setting's wording: the note names Tier 1 and gives the
+    number it fell short of. Without it, a morning with no big names reads as
+    a broken source rather than an honest fit result.
+    """
     sel = pick_track([_scored("Waymo", 1, 30)] + [_scored(f"T2-{i}", 2, 60) for i in range(5)],
                      cfg, "hardware")
-    assert any("fit floor" in n for n in sel.notes)
+    explained = [n for n in sel.notes if "Tier 1" in n]
+    assert explained, f"a benched Tier 1 was dropped silently: {sel.notes}"
+    assert any("minimum fit" in n or "fit floor" in n for n in explained)
+    assert "Waymo" not in [j.company for j in sel.jobs]

@@ -223,15 +223,67 @@ def unscored(
     return [_row_to_job(r) for r in rows]
 
 
-def count_stale_scores(conn: sqlite3.Connection, resume_hash: str) -> int:
-    """How many existing scores were computed against a different resume."""
-    return int(
-        conn.execute(
-            "SELECT COUNT(*) FROM jobs WHERE scored_at IS NOT NULL "
-            "AND shown_at IS NULL AND applied_at IS NULL AND resume_hash != ?",
-            (resume_hash,),
-        ).fetchone()[0]
+def upgrade_score_fingerprints(conn: sqlite3.Connection, hashes: dict[str, str]) -> int:
+    """One-time migration from the resume-only score hash to the composite.
+
+    Scores used to be stamped with resume_hash(resume) alone. They are now
+    stamped with score_fingerprint(), which appends a hash of the scoring
+    REGIME — the prompt, the model id, jd_max_chars — because a cached score is
+    only comparable to a fresh one if both were produced the same way.
+
+    Introducing that would otherwise invalidate every existing score as a false
+    positive. The regime hash is new, but the regime is not: the prompt, model
+    and truncation were all unchanged by the commit that added it, so those
+    scores are still exactly right and re-deriving them is pure waste. The real
+    cost is not the money — it is that a run's scoring budget is capped, so a
+    morning spent re-scoring old postings is a morning NOT spent scoring the
+    new ones, and the backlog it was meant to drain just sits there.
+
+    Deliberately exact: only a row whose stored hash equals the CURRENT
+    resume-only fingerprint is upgraded. A score computed against an older
+    resume keeps its own hash and stays stale, which is correct — the resume it
+    was judged against really has changed. Idempotent, because an upgraded row
+    no longer matches the legacy value.
+    """
+    upgraded = 0
+    for track, composite in hashes.items():
+        legacy, sep, _regime = composite.partition(":")
+        if not sep:
+            continue
+        cur = conn.execute(
+            "UPDATE jobs SET resume_hash = ? "
+            "WHERE track = ? AND resume_hash = ? AND scored_at IS NOT NULL",
+            (composite, track, legacy),
+        )
+        upgraded += cur.rowcount
+    return upgraded
+
+
+def count_stale_scores(
+    conn: sqlite3.Connection, resume_hash: str, track: Optional[str] = None
+) -> int:
+    """How many existing scores were computed against a different resume.
+
+    `track` is not optional in practice — omitting it counts the OTHER track's
+    rows too. The two tracks are scored against different resumes and so always
+    carry different fingerprints, which means every hardware row looks stale to
+    a software query and vice versa. Before this took a track, the startup note
+    reported "30 software" and "30 hardware" for the same 30 rows.
+
+    Nothing was ever mis-scored over it — unscored() has always filtered by
+    track, and that is what actually drives re-scoring. But this number is the
+    one the owner reads to decide whether a resume edit is about to cost him
+    money, so it being roughly double is not a harmless cosmetic issue.
+    """
+    sql = (
+        "SELECT COUNT(*) FROM jobs WHERE scored_at IS NOT NULL "
+        "AND shown_at IS NULL AND applied_at IS NULL AND resume_hash != ?"
     )
+    params: list = [resume_hash]
+    if track is not None:
+        sql += " AND track = ?"
+        params.append(track)
+    return int(conn.execute(sql, params).fetchone()[0])
 
 
 def candidates(

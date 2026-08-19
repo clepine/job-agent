@@ -282,7 +282,13 @@ half covers the scoring prompt, the model id, and `jd_max_chars`: a cached
 score is only comparable to a fresh one if both were produced the same way, and
 before this existed, editing the prompt left every old score in place and
 `pick.py` ranked two scoring regimes against each other with nothing to say so.
-Batch size, budget and retries are excluded — they change cost, not judgement. If an edit invalidates more than one run's
+Batch size, budget and retries are excluded — they change cost, not judgement.
+
+A score stamped before the regime half existed is **carried forward, not
+re-scored**, when its resume half still matches: the prompt and model that
+produced it were unchanged, so it is still correct. A score computed against an
+older *resume* stays stale, which is right — the thing it was judged against
+really did change. If an edit invalidates more than one run's
 budget allows, the highest-scoring jobs are re-scored first and the rest carry
 to later runs — never an abort, never a budget blowout.
 
@@ -475,7 +481,7 @@ never ran" are never confusable. GitHub also disables scheduled workflows after
 python -m pytest tests/ -q
 ```
 
-326 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
+343 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
 fixture removes `ANTHROPIC_API_KEY` from the environment for the whole run, so
 a code path that accidentally constructs a real client fails loudly instead of
 silently spending. Every LLM stage is exercised against `StubAnthropic`.

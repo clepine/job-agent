@@ -17,7 +17,7 @@ fit bar).
 
 ## Status as of 2026-08-18
 
-Working and verified. **339 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
+Working and verified. **343 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
 One live run has completed successfully; cost $0.0757. The first *unattended*
 scheduled run is 2026-08-19 06:30 ET and has never happened yet.
 
@@ -56,6 +56,7 @@ Each has a regression test citing the date it was made.
 | `email.min_fit: 50` | score.py calibrates 0-39 as "poor match, do not apply". Before the floor, the email always sent 5+5 whether or not 10 were worth sending — on 2026-08-18 it shipped a Waymo ML ASIC role at 30/100 whose own rationale said he lacks tapeout experience. Short lists are now normal and are explained. |
 | `limits.max_backlog_age_days: 30` | The ingest age filter only ever ran on the morning's arrivals. A posting could sit in the scored backlog for months and still be sent: the 2026-08-18 email carried a 74-day-old Field AI role and the pool held a sendable 124-day-old one. 30, not 7 — the ingest window governs what is worth PAYING to score, this one governs what is still worth applying to. |
 | The URL is a second witness to the title | Aggregator READMEs truncate titles, and a truncated title can hide the word that disqualifies it. Draper's "Embedded Quality & Fielded Systems **Intern**" arrived as "...Systems In" and was the top hardware pick of a real email. `filters.check_url_title` re-runs the title gates on the Workday URL slug. Reject-only: the slug is lossy, so it can add a rejection but never rescue or be displayed. |
+| Legacy scores are carried forward, not re-scored | Adding the regime half to `score_fingerprint()` would have invalidated all 40 existing scores as a false positive — the prompt, model and `jd_max_chars` were unchanged, so those scores were still right. `db.upgrade_score_fingerprints()` upgrades a row only when its stored hash equals the CURRENT resume-only fingerprint. The cost that matters is not the ~$0.08: a run's scoring budget is capped, so a morning re-scoring old postings is a morning not spent draining the backlog. |
 | The ledger outranks the local DB | `state.load()` was `INSERT OR IGNORE`, so a `state.db` that had drifted behind `state/seen_jobs.json` kept its own NULLs and the `dump()` at the end of the run wrote them back over the committed file. On 2026-08-19 that erased 40 scores and every `shown_at`. `load()` now restores earned fields (score, shown_at, applied_at) into holes, and `dump()` refuses to write a ledger with fewer earned records than the one on disk. |
 
 ## Hard constraints

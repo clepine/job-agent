@@ -106,9 +106,9 @@ def eligible(
     if benched_t1:
         best = max((j.fit_score or 0) for j in benched_t1)
         tier1_notes.append(
-            f"{len(benched_t1)} Tier 1 {track} role(s) scored below the fit "
-            f"floor of {min_fit} (best was {best}) and were not sent. The "
-            f"absence of a big name today is a fit result, not a missing source."
+            f"{len(benched_t1)} Tier 1 {track} role(s) scored below the minimum "
+            f"fit of {min_fit} (best was {best}) and were not sent. The absence "
+            f"of a big name today is a fit result, not a missing source."
         )
 
     notes: list[str] = []
@@ -122,9 +122,9 @@ def eligible(
     if too_weak:
         best = max((j.fit_score or 0) for j in too_weak)
         notes.append(
-            f"{len(too_weak)} scored {track} posting(s) were below the fit floor "
-            f"of {min_fit} (best was {best}) and were not sent. A short list of "
-            f"good matches beats a full one padded with poor ones."
+            f"{len(too_weak)} scored {track} posting(s) were below the minimum "
+            f"fit of {min_fit} (best was {best}) and were not sent. A short list "
+            f"of good matches beats a full one padded with poor ones."
         )
     if disqualified:
         notes.append(
@@ -191,7 +191,7 @@ def pick_track(candidates: Sequence[Job], cfg: dict, track: str) -> Selection:
                 worst = max((j.fit_score or 0) for j in benched_t1)
                 sel.notes.append(
                     f"{len(benched_t1)} Tier 1 {track} role(s) were held back for "
-                    f"scoring below the fit floor of {t1_floor} (best was {worst}) — "
+                    f"scoring below the Tier-1 fit floor of {t1_floor} (best was {worst}) — "
                     f"better-matched Tier 2 roles took those slots instead."
                 )
             if got_t1 < t1_quota:

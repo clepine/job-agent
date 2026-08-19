@@ -146,7 +146,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"loaded {loaded} records from {state_path.name}")
         before = db.stats(conn)
 
-        stale = {t: db.count_stale_scores(conn, hashes[t]) for t in hashes}
+        # Carry forward scores stamped before score_fingerprint() gained its
+        # regime half. They were computed under the same prompt and model, so
+        # they are still valid; without this every one of them would be
+        # re-scored once, and a run's capped scoring budget would go to redoing
+        # old work instead of draining the backlog.
+        upgraded = db.upgrade_score_fingerprints(conn, hashes)
+        if upgraded:
+            print(f"carried forward {upgraded} score(s) stamped under the previous fingerprint")
+
+        stale = {t: db.count_stale_scores(conn, hashes[t], t) for t in hashes}
         for track, count in stale.items():
             if count:
                 print(

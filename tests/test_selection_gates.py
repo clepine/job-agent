@@ -128,7 +128,7 @@ def test_poor_matches_are_never_sent(cfg):
     poor = _job(company="Waymo", fit_score=30, posted_at=_aged(2))
     keep, notes, _t1 = eligible([good, poor], cfg, "hardware")
     assert keep == [good]
-    assert any("fit floor" in n for n in notes)
+    assert any("minimum fit" in n for n in notes)
 
 
 def test_a_short_list_explains_itself_rather_than_padding(cfg):
@@ -138,7 +138,7 @@ def test_a_short_list_explains_itself_rather_than_padding(cfg):
     sel = pick_track(jobs, cfg, "hardware")
     assert len(sel.jobs) == 3
     assert all((j.fit_score or 0) >= cfg["email"]["min_fit"] for j in sel.jobs)
-    assert any("fit floor" in n for n in sel.notes)
+    assert any("minimum fit" in n for n in sel.notes)
     assert any("available to send today" in n for n in sel.notes)
 
 
@@ -395,3 +395,91 @@ def test_a_degraded_fetch_is_reported_as_the_headline():
     assert "FETCH DEGRADED" in source
     assert "boards_failed / report.boards_attempted" in source
 
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-19: adding the regime half to score_fingerprint() would otherwise
+# have invalidated all 40 existing scores as a FALSE POSITIVE — the prompt,
+# model and jd_max_chars were unchanged by that commit, so the scores were
+# still right. The cost that matters is not the ~$0.08: a run's scoring budget
+# is capped, so a morning spent re-scoring old postings is a morning not spent
+# draining the backlog the wider metro window had just filled.
+# ---------------------------------------------------------------------------
+
+
+def test_legacy_scores_are_carried_forward_not_rescored(tmp_path):
+    from pipeline import db as db_mod
+
+    job = _job(company="Motorola Solutions", track="hardware", fit_score=70)
+    composite = "d41b8b7fbd29896f:8bc23fa1"
+    legacy = "d41b8b7fbd29896f"
+
+    with db_mod.connect(tmp_path / "state.db") as conn:
+        db_mod.upsert(conn, [job])
+        conn.execute(
+            "UPDATE jobs SET fit_score=70, scored_at=?, resume_hash=? WHERE id=?",
+            (_aged(1).isoformat(), legacy, job.id),
+        )
+        assert db_mod.count_stale_scores(conn, composite) == 1, "precondition"
+
+        assert db_mod.upgrade_score_fingerprints(conn, {"hardware": composite}) == 1
+        assert db_mod.count_stale_scores(conn, composite) == 0
+
+        # Idempotent: a second run upgrades nothing.
+        assert db_mod.upgrade_score_fingerprints(conn, {"hardware": composite}) == 0
+
+
+def test_a_score_against_an_older_resume_stays_stale(tmp_path):
+    """The migration must not resurrect a score the resume really invalidated."""
+    from pipeline import db as db_mod
+
+    job = _job(company="Old Resume", track="hardware", fit_score=70)
+    composite = "d41b8b7fbd29896f:8bc23fa1"
+
+    with db_mod.connect(tmp_path / "state.db") as conn:
+        db_mod.upsert(conn, [job])
+        conn.execute(
+            "UPDATE jobs SET fit_score=70, scored_at=?, resume_hash=? WHERE id=?",
+            (_aged(1).isoformat(), "0000stale0000000", job.id),
+        )
+        assert db_mod.upgrade_score_fingerprints(conn, {"hardware": composite}) == 0
+        assert db_mod.count_stale_scores(conn, composite) == 1
+
+
+def test_the_migration_never_invents_a_score(tmp_path):
+    """An unscored row must not be stamped as though it had been scored."""
+    from pipeline import db as db_mod
+
+    job = _job(company="Unscored", track="hardware", fit_score=None, scored_at=None)
+    composite = "d41b8b7fbd29896f:8bc23fa1"
+
+    with db_mod.connect(tmp_path / "state.db") as conn:
+        db_mod.upsert(conn, [job])
+        conn.execute(
+            "UPDATE jobs SET resume_hash=? WHERE id=?", ("d41b8b7fbd29896f", job.id)
+        )
+        assert db_mod.upgrade_score_fingerprints(conn, {"hardware": composite}) == 0
+
+
+def test_stale_score_count_does_not_include_the_other_track(tmp_path):
+    """The two tracks always carry different fingerprints, so an unfiltered
+    count reports every hardware row as a stale software score. This number is
+    what the owner reads to judge whether a resume edit is about to cost him
+    money."""
+    from pipeline import db as db_mod
+
+    sw_hash, hw_hash = "aaaa:1111", "bbbb:2222"
+    sw = _job(company="SwCo", track="software")
+    hw = _job(company="HwCo", track="hardware")
+    with db_mod.connect(tmp_path / "state.db") as conn:
+        db_mod.upsert(conn, [sw, hw])
+        for job, h in ((sw, sw_hash), (hw, hw_hash)):
+            conn.execute(
+                "UPDATE jobs SET fit_score=70, scored_at=?, resume_hash=? WHERE id=?",
+                (_aged(1).isoformat(), h, job.id),
+            )
+        # Both rows are current for their own track, so neither is stale.
+        assert db_mod.count_stale_scores(conn, sw_hash, "software") == 0
+        assert db_mod.count_stale_scores(conn, hw_hash, "hardware") == 0
+        # Unfiltered, each row is counted against the other track's hash.
+        assert db_mod.count_stale_scores(conn, sw_hash) == 1
