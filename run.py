@@ -30,7 +30,7 @@ from pipeline import (
     state as state_mod,
 )
 from pipeline.config import load_config, repo_path
-from pipeline.fingerprint import resume_hash
+from pipeline.fingerprint import score_fingerprint
 from pipeline.llm import BudgetExceeded, LlmClient, api_key_present
 from pipeline.models import Job
 from pipeline.rank import prerank
@@ -126,7 +126,10 @@ def main(argv: list[str] | None = None) -> int:
     resume_sw = load_resume(repo_path(cfg["paths"]["resume_sw"]))
     resume_hw = load_resume(repo_path(cfg["paths"]["resume_hw"]))
     resumes = {"software": resume_sw, "hardware": resume_hw}
-    hashes = {"software": resume_hash(resume_sw), "hardware": resume_hash(resume_hw)}
+    hashes = {
+        "software": score_fingerprint(resume_sw, cfg),
+        "hardware": score_fingerprint(resume_hw, cfg),
+    }
 
     run_notes: list[str] = []
     est_cost = 0.0
@@ -169,6 +172,24 @@ def main(argv: list[str] | None = None) -> int:
         print(f"new since last run    : {len(jobs)}")
         for label, err in report.failures[:5]:
             print(f"  ! {label}: {err}")
+        if len(report.failures) > 5:
+            print(f"  ! ...and {len(report.failures) - 5} more")
+
+        # A run that lost a chunk of its board list produces a SHORT email that
+        # looks exactly like a quiet morning. The count was already in the run
+        # summary, but as a table cell next to nine other numbers — the same
+        # place a reader's eye skips. Above ~10% it is the headline: the reason
+        # the list is short is that the fetch broke, not that nobody is hiring.
+        if report.boards_attempted:
+            lost = report.boards_failed / report.boards_attempted
+            if lost >= 0.10:
+                run_notes.append(
+                    f"FETCH DEGRADED: {report.boards_failed} of "
+                    f"{report.boards_attempted} boards failed "
+                    f"({lost:.0%}). Today's list is drawn from an incomplete "
+                    f"pool — treat a short list as a fetch problem, not a "
+                    f"quiet market."
+                )
 
         # ---------------- hard filter (titles + location) ----------------
         _hr("HARD FILTER")
@@ -179,7 +200,7 @@ def main(argv: list[str] | None = None) -> int:
             ("discipline", lambda j: filters.check_title_discipline(j.title)),
             ("level", lambda j: filters.check_title_level(j.title)),
             ("location", lambda j: filters.check_location(j.location)),
-            ("stale", lambda j: filters.check_age(j.age_days, limits.get("max_posting_age_days"))),
+            ("stale", lambda j: filters.check_age(j.age_days, filters.max_age_for(j.metro_class, limits))),
         ):
             kept = []
             rejected = 0
@@ -211,8 +232,23 @@ def main(argv: list[str] | None = None) -> int:
         survivors: list[Job] = []
         re_rejected = 0
         for job in remaining:
-            result = filters.evaluate(job.title, job.location, job.description)
+            result = filters.evaluate(job.title, job.location, job.description, job.url)
             if result.passed:
+                # Hydration can REPLACE the location — Workday's detail endpoint
+                # reveals the sites behind a "6 Locations" placeholder, and the
+                # other four ATSes return a canonical location string. So the
+                # metro class a posting was age-filtered under may not be the
+                # one it ends up with, and the age cutoff is metro-dependent.
+                # Re-check it here against the class it actually has, or a
+                # 25-day-old secondary-metro posting that was briefly mistaken
+                # for a primary one keeps a pass it no longer qualifies for.
+                aged = filters.check_age(
+                    job.age_days, filters.max_age_for(result.metro_class, limits)
+                )
+                if not aged.passed:
+                    re_rejected += 1
+                    stage_counts["stale"] = stage_counts.get("stale", 0) + 1
+                    continue
                 job.metro_class = result.metro_class
                 job.metro = result.metro
                 job.clearance_advantage = result.clearance_advantage

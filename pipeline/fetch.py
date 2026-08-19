@@ -16,6 +16,7 @@ from sources import ashby, github_repos, greenhouse, lever, smartrecruiters, wor
 from sources.base import fetch_many, make_client
 
 from .config import repo_path
+from . import filters
 from .models import Job
 
 log = logging.getLogger("fetch")
@@ -75,9 +76,14 @@ def fetch_boards(cfg: dict, companies: list[dict]) -> tuple[list[Job], FetchRepo
     # newest-first, so handing it the staleness cutoff turns a 4,441-posting
     # board from ~223 requests into a handful. See sources/workday.py.
     workday_kwargs = {
-        "max_age_days": cfg.get("limits", {}).get("max_posting_age_days"),
+        # The most generous metro cutoff, NOT the default one: metro class is
+        # not known until the location filter runs, so stopping at the 7-day
+        # cutoff would discard primary-metro postings before anything could
+        # classify them. See filters.max_age_for().
+        "max_age_days": filters.fetch_max_age(cfg.get("limits", {})),
         "max_pages": int(fetch_cfg.get("workday_max_pages", workday.DEFAULT_MAX_PAGES)),
         "retries": int(fetch_cfg.get("retries", 2)),
+        "page_wave": int(fetch_cfg.get("workday_page_wave", workday.DEFAULT_PAGE_WAVE)),
     }
 
     for entry in companies:

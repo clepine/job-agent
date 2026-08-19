@@ -17,7 +17,7 @@ fit bar).
 
 ## Status as of 2026-08-18
 
-Working and verified. **295 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
+Working and verified. **339 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
 One live run has completed successfully; cost $0.0757. The first *unattended*
 scheduled run is 2026-08-19 06:30 ET and has never happened yet.
 
@@ -53,6 +53,10 @@ Each has a regression test citing the date it was made.
 | State committed as sorted JSON, not SQLite | Binary SQLite delta-compresses poorly; committing it every run would bloat the repo. `state.db` is gitignored and local-only. |
 | Resume = structured YAML + fixed renderer | The model edits *data*, never layout. Formatting cannot drift, so ATS-safety is verified once on the masters rather than per document. |
 | Obtainable-clearance ≠ active clearance | "Required to obtain and maintain a clearance" means he QUALIFIES. Matching "maintain" as an active-clearance requirement dropped 23/23 Draper postings. His clearance eligibility is a differentiator, not a filter. |
+| `email.min_fit: 50` | score.py calibrates 0-39 as "poor match, do not apply". Before the floor, the email always sent 5+5 whether or not 10 were worth sending — on 2026-08-18 it shipped a Waymo ML ASIC role at 30/100 whose own rationale said he lacks tapeout experience. Short lists are now normal and are explained. |
+| `limits.max_backlog_age_days: 30` | The ingest age filter only ever ran on the morning's arrivals. A posting could sit in the scored backlog for months and still be sent: the 2026-08-18 email carried a 74-day-old Field AI role and the pool held a sendable 124-day-old one. 30, not 7 — the ingest window governs what is worth PAYING to score, this one governs what is still worth applying to. |
+| The URL is a second witness to the title | Aggregator READMEs truncate titles, and a truncated title can hide the word that disqualifies it. Draper's "Embedded Quality & Fielded Systems **Intern**" arrived as "...Systems In" and was the top hardware pick of a real email. `filters.check_url_title` re-runs the title gates on the Workday URL slug. Reject-only: the slug is lossy, so it can add a rejection but never rescue or be displayed. |
+| The ledger outranks the local DB | `state.load()` was `INSERT OR IGNORE`, so a `state.db` that had drifted behind `state/seen_jobs.json` kept its own NULLs and the `dump()` at the end of the run wrote them back over the committed file. On 2026-08-19 that erased 40 scores and every `shown_at`. `load()` now restores earned fields (score, shown_at, applied_at) into holes, and `dump()` refuses to write a ledger with fewer earned records than the one on disk. |
 
 ## Hard constraints
 
@@ -96,8 +100,59 @@ python -m pipeline.score --rescore <id>
 5. **Seasonality.** The 7-day window runs a surplus in August. It will not in
    February. `run.py` diagnoses *why* a list is short — empty pool vs unscored
    backlog vs all-shown — so do not guess.
-6. **`out/usage.jsonl` was polluted** by tests writing stub rows (351 fake vs 6
-   real). Tests are isolated now; the historical rows may still need cleaning.
+6. ~~**`out/usage.jsonl` was polluted**~~ — cleaned 2026-08-19 with
+   `python tools/clean_usage.py --write`. 351 stub rows removed, 6 real rows
+   kept, real spend $0.0757. A `.bak` sits beside it. Stub rows are separable
+   because `StubAnthropic` returns a constant 1000-in/200-out with no cache
+   tokens, which a real call cannot coincide on.
+7. **Primary metros are starved and it is the age window, not coverage.**
+   Measured 2026-08-19: the 770-posting pool holds 392 Bay Area and 106 Seattle
+   but 3 Charlotte and **1** RTP. The obvious hypothesis — missing employers —
+   was tested and is wrong: 18 candidate boards (Truist, Duke Energy, TIAA,
+   Epic Games, Pendo, Bandwidth, SAS, Toast, Klaviyo, Cognex, Marvell, Cadence
+   and others, all probed live and answering) contribute **4** postings inside
+   the 7-day window and **53** with no age limit. Epic Games, Bandwidth and
+   Pendo have RTP new-grad engineering roles 13-29 days old that the 7-day
+   window discards permanently. See "Open question" below.
+
+## The age window is now metro-aware (owner's call, 2026-08-19)
+
+`limits.max_posting_age_days: 7` still governs secondary metros and remote.
+`limits.max_posting_age_days_primary: 30` governs the five primary metros.
+
+The original 7-day surplus (119 SW / 67 HW) was measured across the whole board
+list, which is heavily Bay Area weighted, so it was a surplus in the markets he
+is *least* likely to move to. Measured across all 290 boards on 2026-08-19,
+postings surviving the title and location filters:
+
+| cutoff | in primary metros | RTP sw/hw | Boston hw | NYC hw | Chicago hw |
+|---|---|---|---|---|---|
+| 7d | 84 | 7 / 0 | 8 | 0 | 1 |
+| 14d | 124 | 10 / 1 | 13 | 2 | 2 |
+| **30d** | **207** | **16 / 3** | **23** | **7** | **3** |
+| 60d | 261 | 17 / 3 | 25 | 9 | 3 |
+
+Hardware in primary metros — the scarcest resource in the whole system — goes
+from 11 to 36. Returns flatten after 30 days, which is why 30 is the number.
+
+Verified end to end on 2026-08-19 (`--dry-run --no-llm`, full fetch, 0 boards
+failed): **183 new postings added, 100 of them in primary metros, 24 of those
+hardware**. For comparison, the entire 770-posting pool before this change held
+37 Boston, 21 Chicago, 3 Charlotte and 1 RTP. Fetch wall time 7m18s, against
+3m36s at the old 7-day cutoff and 52m before page waves existed.
+
+**The fetch layer must page to the widest cutoff**, not the default one: metro
+class is unknown until after the location filter, so stopping at 7 days would
+discard the very postings the setting exists to admit. `filters.fetch_max_age()`
+is the single place that decides this.
+
+That has a real cost, and it needed a second change to be affordable. At 30
+days RTX needs ~223 Workday pages and Northrop ~185, against ~50 and ~35 at 7
+days. A full 290-board fetch with the old strictly-sequential paging took **52
+minutes** — past the workflow's 25-minute timeout. Workday paging is pure
+latency, so `sources/workday.py` now requests pages in concurrent waves of 6
+after page 0 (`fetch.workday_page_wave`), discarding anything fetched past the
+stop. Page 0 is never waved, so a dead tenant still costs exactly one request.
 
 ## Owner profile notes that drive matching
 

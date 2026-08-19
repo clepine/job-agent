@@ -72,14 +72,48 @@ def _row_to_record(row: sqlite3.Row) -> dict[str, Any]:
     return record
 
 
-def dump(conn: sqlite3.Connection, path: str | Path) -> int:
-    """Write the SQLite contents out as sorted JSON. Returns the record count."""
+def dump(conn: sqlite3.Connection, path: str | Path, force: bool = False) -> int:
+    """Write the SQLite contents out as sorted JSON. Returns the record count.
+
+    Refuses to write a ledger that has FEWER scored, shown, or applied records
+    than the one already on disk, because that can only mean the database it is
+    being written from has lost something the committed file still had.
+
+    The counts are monotonic by design: a score is cached forever, `shown_at`
+    is never cleared, and `applied_at` is the owner's own record. So a decrease
+    is never a legitimate outcome of a run — it is a symptom, and by the time
+    it reaches the file the previous contents are gone. `force=True` is the
+    escape hatch for a deliberate rebuild.
+    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     columns = ", ".join(FIELDS)
     rows = conn.execute(f"SELECT {columns} FROM jobs ORDER BY id ASC").fetchall()
     records = [_row_to_record(r) for r in rows]
+
+    if not force:
+        previous = summarize(path)
+        outgoing = {
+            "scored": sum(1 for r in records if r.get("scored_at")),
+            "shown": sum(1 for r in records if r.get("shown_at")),
+            "applied": sum(1 for r in records if r.get("applied_at")),
+        }
+        lost = {
+            k: (previous.get(k, 0), outgoing[k])
+            for k in outgoing
+            if outgoing[k] < previous.get(k, 0)
+        }
+        if lost:
+            detail = ", ".join(
+                f"{k} {was} -> {now}" for k, (was, now) in sorted(lost.items())
+            )
+            raise LedgerRegression(
+                f"refusing to write {path}: it would lose earned records ({detail}). "
+                f"The database being written from has less than the committed ledger. "
+                f"Restore the ledger (git checkout {path}) and re-run, or pass "
+                f"force=True for a deliberate rebuild."
+            )
 
     payload = {
         "version": VERSION,
@@ -94,11 +128,37 @@ def dump(conn: sqlite3.Connection, path: str | Path) -> int:
     return len(records)
 
 
+# Fields the LEDGER is authoritative for when the local database has nothing.
+#
+# These are EARNED, not fetched: a score cost money, `shown_at` is the promise
+# that a role is never sent twice, and `applied_at` is the owner's own record
+# of where he applied. Re-fetching a posting reproduces its title and location
+# for free; nothing reproduces these.
+_EARNED = ("shown_at", "applied_at", "fit_score", "scored_at")
+_EARNED_TEXT = ("fit_rationale", "resume_hash")
+
+
 def load(conn: sqlite3.Connection, path: str | Path) -> int:
     """Hydrate SQLite from the committed JSON. Returns the record count.
 
-    Existing rows win: this only fills in what the local database is missing,
-    so a local run that has already fetched fresh data is never clobbered.
+    New rows are inserted. For rows the local database ALREADY has, the earned
+    fields above are restored wherever the database is empty and the ledger is
+    not — the database never wins by having less.
+
+    That asymmetry is the whole point, and getting it wrong destroys data.
+    This function used to be a bare INSERT OR IGNORE, on the reasoning that
+    "existing rows win, so a local run that already fetched fresh data is never
+    clobbered". But a freshly fetched row is empty exactly where it matters:
+    no score, no shown_at, no applied_at. So a state.db that had drifted behind
+    the ledger — a crashed run, a restored copy, a run with --state pointing
+    elsewhere — would keep its own NULLs, and the dump() at the end of the run
+    would then write those NULLs back over the committed ledger.
+
+    Observed 2026-08-19: a local state.db holding 770 rows and 0 scores loaded
+    a ledger holding 770 rows and 40 scores, kept its own NULLs, and the dump
+    at the end of that run erased all 40 scores and every shown_at flag from
+    the committed file. The ledger IS the agent's memory; losing it means
+    re-paying for every score and re-sending every role already sent.
     """
     path = Path(path)
     if not path.exists():
@@ -125,7 +185,29 @@ def load(conn: sqlite3.Connection, path: str | Path) -> int:
         f"VALUES ({placeholders}, '')",
         values,
     )
+
+    # Restore earned fields onto rows that already existed locally. COALESCE
+    # and the empty-string CASE both mean the same thing: the ledger fills a
+    # hole, never overwrites a value the database already has.
+    sets = [f"{f} = COALESCE({f}, ?)" for f in _EARNED]
+    sets += [f"{f} = CASE WHEN {f} = '' OR {f} IS NULL THEN ? ELSE {f} END" for f in _EARNED_TEXT]
+    # first_seen_at drives the age stamp in the email, so the EARLIER of the
+    # two wins rather than whichever was written last.
+    sets.append("first_seen_at = COALESCE(MIN(first_seen_at, ?), first_seen_at)")
+    restore_sql = f"UPDATE jobs SET {', '.join(sets)} WHERE id = ?"
+    conn.executemany(
+        restore_sql,
+        [
+            tuple(record.get(f) for f in _EARNED + _EARNED_TEXT)
+            + (record.get("first_seen_at"), record.get("id"))
+            for record in records
+        ],
+    )
     return len(records)
+
+
+class LedgerRegression(RuntimeError):
+    """dump() would erase earned records that the ledger on disk still has."""
 
 
 def summarize(path: str | Path) -> dict:

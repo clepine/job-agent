@@ -8,6 +8,7 @@ concurrently and fail soft: one dead board must never abort a run.
 from __future__ import annotations
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Iterable, Optional
 
@@ -50,20 +51,52 @@ def get_json(client: httpx.Client, url: str, retries: int = 2) -> Any:
     raise BoardError(f"{url}: {last}")
 
 
+# 429 is the one 4xx that means "ask again", not "stop asking".
+_TRANSIENT_STATUS = {429}
+
+
+def _retry_after(resp: httpx.Response, attempt: int) -> float:
+    """Seconds to wait: the server's Retry-After if it gave one, else backoff."""
+    raw = resp.headers.get("Retry-After")
+    if raw:
+        try:
+            return min(10.0, max(0.0, float(raw)))
+        except ValueError:
+            pass
+    return min(4.0, 0.5 * (2**attempt))
+
+
 def post_json(
     client: httpx.Client, url: str, payload: dict, retries: int = 2
 ) -> Any:
     """POST a JSON body and return the decoded response.
 
-    Workday's CxS endpoint is the only source that needs POST. Its failure modes
-    are deterministic rather than transient — a wrong tenant/site returns 422,
-    an over-large `limit` returns 400 — so a 4xx is raised immediately and never
-    retried. Only 5xx and transport errors are worth a second attempt.
+    Workday's CxS endpoint is the only source that needs POST. Most of its
+    failure modes are deterministic rather than transient — a wrong tenant/site
+    returns 422, an over-large `limit` returns 400 — so those are raised
+    immediately and never retried. That distinction is load-bearing: probe()
+    reads 401 vs 404 vs 422 to tell "not on Workday" from "wrong site segment",
+    and retrying would only slow down a verdict that will not change.
+
+    **429 is the exception, and it has to be**, because it is the one 4xx that
+    means "ask again later" rather than "stop asking". Treating it like the
+    others was harmless while paging was strictly sequential and gentle. It is
+    not harmless now that pages are requested in concurrent waves: a single
+    rate-limited page aborts the WHOLE board mid-pagination, and because the
+    fetcher fails soft, the run continues and simply reports fewer postings.
+    Measured 2026-08-19, a saturated network turned that into 52 of 290 boards
+    dropped in one run — an 18% loss that looked exactly like a quiet morning.
     """
     last: Optional[Exception] = None
     for attempt in range(retries + 1):
         try:
             resp = client.post(url, json=payload)
+            if resp.status_code in _TRANSIENT_STATUS:
+                last = BoardError(f"{resp.status_code} {url}")
+                if attempt == retries:
+                    break
+                time.sleep(_retry_after(resp, attempt))
+                continue
             if 400 <= resp.status_code < 500:
                 raise BoardError(f"{resp.status_code} {url}")
             resp.raise_for_status()

@@ -221,7 +221,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from . import db
     from .config import load_config, repo_path
-    from .fingerprint import resume_hash
+    from .fingerprint import score_fingerprint
     from .jd import compress_jd
     from .llm import BudgetExceeded, LlmClient, api_key_present
 
@@ -308,7 +308,10 @@ def main(argv: list[str] | None = None) -> int:
             print("the model returned no score; the posting is left unscored", file=sys.stderr)
             return 3
 
-        db.save_scores(conn, scored, resume_hash(resume))
+        # Must be the SAME fingerprint the daily run computes, or the run
+        # would read this fresh score as stale and immediately pay to
+        # redo it — turning the escape hatch into a recurring bill.
+        db.save_scores(conn, scored, score_fingerprint(resume, cfg))
         print(f"\nNew     : {scored[0].fit_score} — {scored[0].fit_rationale}")
         print(f"Tokens  : {usage.input_tokens} in / {usage.output_tokens} out")
         print(f"Cost    : ${llm.ledger.spent_usd:.4f} ({llm.ledger.calls} call)")

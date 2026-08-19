@@ -96,6 +96,21 @@ otherwise be re-scored on its title alone.
 
 ### State
 
+The committed ledger outranks the local database. `load()` restores earned
+fields — `fit_score`, `scored_at`, `shown_at`, `applied_at` — onto local rows
+that are missing them, and never overwrites a value the database already has.
+`dump()` refuses to write a ledger with fewer scored, shown, or applied records
+than the file already on disk.
+
+Both halves matter, and the second exists because the first was wrong. `load()`
+used to be a bare `INSERT OR IGNORE` on the reasoning that existing rows should
+win. But a freshly fetched row is empty exactly where it counts — no score, no
+`shown_at` — so a `state.db` that had drifted behind the ledger kept its own
+NULLs and the dump at the end of the run wrote them back over the committed
+file. On 2026-08-19 that erased 40 cached scores and every `shown_at` flag.
+Those counts only ever go up, so a decrease is always a symptom, never a
+result. Pass `force=True` for a deliberate rebuild.
+
 Two files, deliberately split:
 
 | File | Role | Committed? |
@@ -156,7 +171,8 @@ fetch ─→ normalize ─→ dedupe ─→ hard-filter ─→ hydrate ─→ re
 | Per-posting track inference (software vs hardware) | `pipeline/track.py` | free |
 | BM25 relevance pre-rank against the resume | `pipeline/rank.py` | free |
 | **Score each new posting once, 0-100 + one-line rationale** | `pipeline/score.py` | **Claude Sonnet 5** |
-| Pick 5+5 with the 2 Tier-1 / 3 Tier-2 quota | `pipeline/pick.py` | free |
+| Selection gates: backlog age, fit floor, URL-slug disqualifiers | `pipeline/pick.py` | free |
+| Pick up to 5+5 with the 2 Tier-1 / 3 Tier-2 quota | `pipeline/pick.py` | free |
 | ATS keyword diff | `pipeline/keywords.py` | free |
 | Render + send | `pipeline/email.py` | free |
 
@@ -182,6 +198,21 @@ write-up with the measurements is the module docstring in `sources/workday.py`.
 | Descriptions | Not in the list response — one GET per posting, paid only for filter survivors |
 | Auth | None. No session cookie is needed on any tenant that answers at all |
 
+Pages after the first are requested `fetch.workday_page_wave` at a time.
+Depth is the entire cost of this source, and depth grew sharply when the
+primary-metro window widened the fetch cutoff from 7 days to 30 — RTX went from
+~50 pages to ~223, Northrop from ~35 to ~185. Measured 2026-08-19, a full
+290-board fetch with strictly sequential paging took **52 minutes**, past the
+workflow's timeout, so the wider window could not have shipped without this.
+
+The wave preserves the early stop exactly. Stop conditions are still evaluated
+page by page in order; the only difference is that up to `wave - 1` pages
+beyond the stop were already in flight, and those are **discarded, never
+appended** — otherwise the staleness cutoff would leak the very postings it
+exists to exclude. Page 0 is never waved: a dead tenant fails on its first
+request, 18 of the mined boards are dead, and `probe()`'s 401/404/422
+diagnosis has to read one failure rather than the winner of six.
+
 The newest-first sort is load-bearing. With `limits.max_posting_age_days: 7`
 the fetcher stops as soon as one whole page is older than the cutoff, so RTX's
 4,441-posting board costs ~10 requests a morning instead of 223. Adding 130
@@ -194,11 +225,64 @@ classifies every US posting as "none" and the source silently returns nothing.
 consider; it is **additive by construction** — the original string is always
 kept, so it can turn a "none" into a match but never the reverse.
 
-**Scores expire when the resume changes.** Each score is stamped with a
-fingerprint of the resume it was computed against (`pipeline/fingerprint.py`),
-covering only what actually feeds a score — skills, experience, projects,
-coursework. Edit a skill and every affected score is re-queued; fix a typo in
-your phone number and nothing is. If an edit invalidates more than one run's
+### Why the email sometimes sends fewer than five
+
+The hard filters run at **ingest**, against the postings that arrived that
+morning. Nothing used to re-examine a posting once it was in the database, and
+a posting can sit in the scored backlog for weeks because better ones keep
+outranking it. Three gates now run at selection time instead:
+
+| Gate | Setting | What it stops |
+|---|---|---|
+| Backlog age | `limits.max_backlog_age_days: 30` | A 74-day-old req went out in the 2026-08-18 hardware email; the pool held a sendable 124-day-old one. |
+| Fit floor | `email.min_fit: 40` | The email sent five per track whether or not five were worth sending — including a Waymo ML ASIC role at 30/100 whose own rationale said the owner lacks tapeout experience. |
+| URL-slug disqualifier | always on | An aggregator truncated Draper's "Embedded Quality & Fielded Systems **Intern**" to "...Systems In". The word that disqualifies it was gone; the URL still had it. |
+
+So a four-role day is a normal, correct outcome. The email always says how many
+were held back and why — a short list is never confusable with a broken run.
+
+### The posting-age window is metro-aware
+
+| Setting | Applies to | Value |
+|---|---|---|
+| `limits.max_posting_age_days` | secondary metros, remote | 7 |
+| `limits.max_posting_age_days_primary` | RTP, Charlotte, Boston, NYC, Chicago | 30 |
+
+A single 7-day window was measured against the whole board list and looked like
+a comfortable surplus. Broken out by metro it was not: the same 770-posting
+pool held 392 Bay Area and 106 Seattle roles against 3 Charlotte and 1 RTP —
+abundant exactly where relocation is least likely, empty next to home. Across
+all 290 boards, postings surviving the title and location filters:
+
+| cutoff | in primary metros | RTP sw/hw | Boston hw | NYC hw |
+|---|---|---|---|---|
+| 7d | 84 | 7 / 0 | 8 | 0 |
+| 14d | 124 | 10 / 1 | 13 | 2 |
+| **30d** | **207** | **16 / 3** | **23** | **7** |
+| 60d | 261 | 17 / 3 | 25 | 9 |
+
+Hardware in primary metros goes from 11 to 36, and returns flatten after 30
+days. Adding *employers* does not fix this — eighteen extra boards, all probed
+live and answering, contribute 4 postings inside 7 days and 53 with no age
+limit.
+
+**The fetch layer pages to the widest cutoff, not the default one.** Metro
+class is unknown until the location filter runs, which is after the fetch, so
+stopping at 7 days would discard the postings the wider window exists to admit.
+`filters.fetch_max_age()` is the one place that decides this. It is not free:
+at 30 days RTX needs ~223 Workday pages and Northrop ~185, against ~50 and ~35
+at 7 days, so `fetch.workday_max_pages` had to rise to match.
+
+**Scores expire when the resume changes — or when the scoring changes.** Each
+score is stamped with `score_fingerprint()` (`pipeline/fingerprint.py`), which
+has two halves. The resume half covers only what feeds a score — skills,
+experience, projects, coursework — so editing a skill re-queues every affected
+score while fixing a typo in your phone number re-queues nothing. The regime
+half covers the scoring prompt, the model id, and `jd_max_chars`: a cached
+score is only comparable to a fresh one if both were produced the same way, and
+before this existed, editing the prompt left every old score in place and
+`pick.py` ranked two scoring regimes against each other with nothing to say so.
+Batch size, budget and retries are excluded — they change cost, not judgement. If an edit invalidates more than one run's
 budget allows, the highest-scoring jobs are re-scored first and the rest carry
 to later runs — never an abort, never a budget blowout.
 
@@ -245,6 +329,21 @@ python -c "
 import json;rows=[json.loads(l) for l in open('out/usage.jsonl')]
 print(f'{len(rows)} calls, \${sum(r[\"call_cost_usd\"] for r in rows):.4f} total')"
 ```
+
+That ledger is only worth having if it is accurate. Before tests were isolated,
+every test exercising an LLM stage appended a row to the real file, so it
+claimed 357 calls and $2.18 against a live spend of 6 calls and $0.0757 — a 29x
+overstatement on a $5 balance. `_isolate_usage_log` in `tests/conftest.py`
+stops new pollution; `tools/clean_usage.py` removes the historical rows:
+
+```bash
+python tools/clean_usage.py           # report only
+python tools/clean_usage.py --write   # rewrite, keeping a .bak
+```
+
+Stub rows are separable because `StubAnthropic` returns a constant
+1000-in / 200-out with zero cache tokens, and a real call cannot land on all
+four of those numbers at once. Matching is on the full signature, never on cost.
 
 Model choice is `claude-sonnet-5` with `thinking: disabled` and `effort: low`,
 set in `config.yaml`. Thinking is **on by default** on Sonnet 5 and is disabled
@@ -376,7 +475,7 @@ never ran" are never confusable. GitHub also disables scheduled workflows after
 python -m pytest tests/ -q
 ```
 
-295 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
+326 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
 fixture removes `ANTHROPIC_API_KEY` from the environment for the whole run, so
 a code path that accidentally constructs a real client fails loudly instead of
 silently spending. Every LLM stage is exercised against `StubAnthropic`.

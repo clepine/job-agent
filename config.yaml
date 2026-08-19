@@ -59,9 +59,38 @@ limits:
   # first number to raise (14 or 30) — run.py will say plainly whether the
   # cause is an empty pool or an unscored backlog, so don't guess.
   max_posting_age_days: 7
+  # ...EXCEPT in the five primary metros, where 7 days is not a tight filter,
+  # it is a blackout. Owner's call 2026-08-19. Measured that morning, the same
+  # 770-posting pool held 392 Bay Area and 106 Seattle roles against 3
+  # Charlotte and 1 RTP — abundant exactly where he is least likely to move,
+  # empty in the two markets he lives near.
+  #
+  # The obvious explanation was tested and is wrong. Eighteen extra boards, all
+  # probed live and answering (Truist, Duke Energy, TIAA, Epic Games, Pendo,
+  # Bandwidth, SAS, Toast, Klaviyo, Cognex, Marvell, Cadence and others) add
+  # FOUR postings inside 7 days and FIFTY-THREE with no age limit. Epic Games,
+  # Bandwidth and Pendo each have RTP new-grad engineering roles 13-29 days
+  # old. Those are open reqs, and the cutoff was discarding them.
+  #
+  # This does NOT loosen the original decision, it localizes it: fresh-only
+  # still applies everywhere supply justifies it. If the email starts filling
+  # with cold primary-metro reqs, lower this — not max_posting_age_days.
+  max_posting_age_days_primary: 30
   # Diversity guard: at most this many slots per company per track, so one
   # company with a big board cannot take the whole email.
   max_per_company: 2
+  # The backlog counterpart to max_posting_age_days. A posting is filtered on
+  # age when it ARRIVES, but it can then sit in the scored backlog for weeks
+  # because better matches kept outranking it, and nothing re-checked it.
+  # Measured 2026-08-19: the pool held scored, sendable postings 124, 110, 97,
+  # 77 and 74 days old, and the 2026-08-18 hardware email sent the 74-day-old
+  # one. A four-month-old req is not a lead.
+  #
+  # 30, not 7. The ingest window is deliberately tight because it governs what
+  # is worth PAYING to score; this one governs what is still worth applying to,
+  # and a month-old posting often is. Raising it re-admits cold reqs; lowering
+  # it toward 7 shrinks the backlog the email draws on in a slow week.
+  max_backlog_age_days: 30
 
 email:
   subject_prefix: "Daily Job Matches"
@@ -74,6 +103,17 @@ email:
   # slot from a Draper role scoring 50, and an Anduril role scoring 45
   # displaced two roles scoring 60. Below this score, backfill from Tier 2.
   tier1_min_fit: 50
+  # Global floor: never send a posting the model itself called a poor match.
+  # score.py calibrates 0-39 as "poor match, do not apply", so this is that
+  # calibration enforced rather than merely printed. Before it existed the
+  # email always sent five per track whether or not five were worth sending —
+  # on 2026-08-18 the hardware list ended with a Waymo ML ASIC role at 30/100
+  # whose own rationale said the owner lacks the tapeout experience, and a run
+  # later that evening sent roles at 20, 30 and 35.
+  #
+  # This makes SHORT lists normal and correct. The email says how many were
+  # held back and why, so a four-role day is never confusable with a break.
+  min_fit: 40
 
 geography:
   primary_bonus: 15
@@ -103,7 +143,35 @@ fetch:
   # One known outlier: CVS Health posts so heavily that even 60 pages stays
   # inside a single day. It is capped, and that is fine — it is a pharmacy
   # chain, not a target employer.
-  workday_max_pages: 60
+  # 250, raised from 60 on 2026-08-19 when limits.max_posting_age_days_primary
+  # widened the FETCH cutoff from 7 days to 30. Measured that day against live
+  # boards, pages needed to reach the cutoff:
+  #
+  #                       7 days      30 days
+  #     RTX                  ~50         ~223
+  #     Northrop Grumman     ~35         ~185
+  #     Draper                 4          ~11
+  #
+  # At 60 the cap would have fired first on RTX and Northrop and silently
+  # truncated them back to roughly a 7-day window — so the primary-metro
+  # setting would have looked applied while quietly doing nothing for the two
+  # defense employers where the owner's clearance eligibility matters most.
+  #
+  # Gating the wider cutoff per-board on companies.yaml `metros` was considered
+  # and rejected: Northrop Grumman's metros list is EMPTY, so the gate would
+  # have kept exactly the wrong board on the narrow window. A hand-maintained
+  # tag is not a safe input to a correctness decision.
+  workday_max_pages: 250
+  # Pages requested concurrently per board, after page 0. Workday paging is the
+  # dominant cost of a run and it is pure latency — 223 sequential round-trips
+  # for RTX. Measured 2026-08-19 at the 30-day cutoff, a full 290-board fetch
+  # took 52 MINUTES sequentially, past the workflow's timeout.
+  #
+  # Page 0 is deliberately never waved: a dead tenant fails on its first
+  # request, and 18 boards in companies.yaml are dead.
+  #
+  # Total in-flight requests are this times fetch.max_concurrency (6 x 8 = 48).
+  workday_page_wave: 6
 
 paths:
   # Local working store. Gitignored — see state/ below.
