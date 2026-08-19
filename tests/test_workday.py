@@ -256,11 +256,26 @@ def test_fetch_posts_the_documented_body_and_never_exceeds_the_limit_cap():
     assert [b["offset"] for _, b in client.posts] == [0, 20, 40]
 
 
+# Pages after the first are requested `page_wave` at a time (2026-08-19), so a
+# stop can have up to `wave - 1` pages already in flight. Those are discarded,
+# never appended. The tests below therefore assert two things separately:
+#
+#   * with page_wave=1, the EXACT legacy request counts — proving the stop
+#     conditions themselves are untouched;
+#   * with the real wave, the same jobs come back and the request count stays
+#     bounded by one wave rather than by max_pages, which is the property that
+#     keeps a 4,441-posting board affordable.
+
+
 def test_pagination_stops_on_a_short_page():
     short = {"jobPostings": PAGE0["jobPostings"][:5]}
     client = FakeClient({0: PAGE0, 20: short})
-    workday.fetch(client, "ADI", SLUG, "hardware", max_pages=10)
+    workday.fetch(client, "ADI", SLUG, "hardware", max_pages=10, page_wave=1)
     assert len(client.posts) == 2
+
+    waved = FakeClient({0: PAGE0, 20: short})
+    workday.fetch(waved, "ADI", SLUG, "hardware", max_pages=10)
+    assert len(waved.posts) <= 1 + workday.DEFAULT_PAGE_WAVE
 
 
 def test_pagination_stops_once_a_whole_page_is_past_the_staleness_cutoff():
@@ -270,16 +285,66 @@ def test_pagination_stops_once_a_whole_page_is_past_the_staleness_cutoff():
     4,441-posting board would otherwise cost 223 requests every morning.
     """
     client = FakeClient({0: PAGE0, 20: STALE, 40: PAGE0})
-    jobs = workday.fetch(client, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10)
+    jobs = workday.fetch(
+        client, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10, page_wave=1
+    )
 
     assert len(client.posts) == 2, "should not have asked for a third page"
     assert all(p["postedOn"] == "Posted 30+ Days Ago" for p in STALE["jobPostings"])
     assert len(jobs) == len(PAGE0["jobPostings"]) + len(STALE["jobPostings"])
 
 
+def test_waves_return_exactly_what_sequential_paging_returned():
+    """The wave is a speedup, not a behaviour change.
+
+    Pages fetched past the stop must be DISCARDED — if they were appended, the
+    staleness cutoff would leak postings it was supposed to exclude, and a
+    30-day-old req would reappear in a 7-day window.
+    """
+    pages = {0: PAGE0, 20: STALE, 40: PAGE0, 60: PAGE0, 80: PAGE0, 100: PAGE0}
+
+    seq = FakeClient(dict(pages))
+    sequential = workday.fetch(
+        seq, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10, page_wave=1
+    )
+    waved = FakeClient(dict(pages))
+    parallel = workday.fetch(
+        waved, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10
+    )
+
+    assert [j.url for j in parallel] == [j.url for j in sequential]
+    assert len(waved.posts) > len(seq.posts), "precondition: the wave over-fetched"
+    assert len(waved.posts) <= 1 + workday.DEFAULT_PAGE_WAVE
+
+
+def test_a_dead_board_still_costs_exactly_one_request():
+    """Page 0 is never waved.
+
+    18 of the boards in companies.yaml are dead. Firing a wave at each would
+    turn them into ~108 pointless requests a morning, and probe()'s 401/404/422
+    diagnosis would report whichever of six racing failures landed first.
+    """
+    import httpx
+    import pytest as _pytest
+
+    from sources.base import BoardError
+
+    class DeadClient(FakeClient):
+        def post(self, url, json=None, **kw):
+            self.posts.append((url, json))
+            raise BoardError("HTTP 422")
+
+    client = DeadClient({})
+    with _pytest.raises(BoardError):
+        workday.fetch(client, "Nope", SLUG, "hardware", max_pages=50)
+    assert len(client.posts) == 1
+
+
 def test_no_early_stop_without_a_cutoff():
     client = FakeClient({0: PAGE0, 20: STALE, 40: {"jobPostings": []}})
-    workday.fetch(client, "ADI", SLUG, "hardware", max_age_days=None, max_pages=10)
+    workday.fetch(
+        client, "ADI", SLUG, "hardware", max_age_days=None, max_pages=10, page_wave=1
+    )
     assert len(client.posts) == 3
 
 
@@ -291,7 +356,9 @@ def test_unparseable_dates_never_trigger_the_early_stop():
         ]
     }
     client = FakeClient({0: murky, 20: {"jobPostings": []}})
-    workday.fetch(client, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10)
+    workday.fetch(
+        client, "ADI", SLUG, "hardware", max_age_days=7, max_pages=10, page_wave=1
+    )
     assert len(client.posts) == 2
 
 
@@ -475,13 +542,47 @@ def test_fetch_boards_passes_the_staleness_cutoff_to_workday_only():
 
     from pipeline import fetch as fetch_mod
 
-    source = inspect.getsource(fetch_mod.fetch_boards)
-    assert "max_posting_age_days" in source
-    assert "workday_max_pages" in source
+    assert "workday_max_pages" in inspect.getsource(fetch_mod.fetch_boards)
 
     params = inspect.signature(workday.fetch).parameters
     assert params["max_age_days"].kind is inspect.Parameter.KEYWORD_ONLY
     assert params["max_pages"].kind is inspect.Parameter.KEYWORD_ONLY
+
+
+def test_fetch_uses_the_most_generous_metro_cutoff():
+    """Fetch must page to the WIDEST window, not the default one.
+
+    Metro class is only known after the location filter runs, which is after
+    the fetch. If the fetcher stopped at the 7-day secondary-metro cutoff, the
+    8-to-30-day primary-metro postings that limits.max_posting_age_days_primary
+    exists to admit would never be fetched at all, and the setting would look
+    like it did nothing.
+    """
+    from pipeline import filters
+
+    limits = {"max_posting_age_days": 7, "max_posting_age_days_primary": 30}
+    assert filters.fetch_max_age(limits) == 30
+    assert filters.max_age_for("primary", limits) == 30
+    assert filters.max_age_for("secondary", limits) == 7
+    assert filters.max_age_for("none", limits) == 7
+
+    # A config with no primary override behaves exactly as before.
+    assert filters.fetch_max_age({"max_posting_age_days": 7}) == 7
+    assert filters.max_age_for("primary", {"max_posting_age_days": 7}) == 7
+    assert filters.fetch_max_age({}) is None
+
+
+def test_primary_metro_postings_survive_the_wider_window():
+    """The behaviour the owner actually asked for, end to end."""
+    from pipeline import filters
+
+    limits = {"max_posting_age_days": 7, "max_posting_age_days_primary": 30}
+    # A 26-day-old Epic Games role in RTP — real, and previously discarded.
+    assert filters.check_age(26, filters.max_age_for("primary", limits)).passed
+    # The same age in a secondary metro is still too old.
+    assert not filters.check_age(26, filters.max_age_for("secondary", limits)).passed
+    # And 30 days remains the limit, not an open door.
+    assert not filters.check_age(45, filters.max_age_for("primary", limits)).passed
 
 
 def test_other_fetchers_are_not_handed_workday_kwargs():
@@ -494,3 +595,73 @@ def test_other_fetchers_are_not_handed_workday_kwargs():
     for module in (greenhouse, lever, ashby, smartrecruiters):
         params = list(inspect.signature(module.fetch).parameters)
         assert params == ["client", "company", "slug", "track"], module.__name__
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-19: multi-word cities were silently dropped from Workday URL paths.
+#
+# location_from_path turned every hyphen into a comma, which happens to be
+# right for "Charlotte-NC" and wrong for everything longer. "New-York-NY-USA"
+# became "New, York, NY, USA"; geo.py matches a city only in the segment before
+# the first comma, so it read "New", found no metro, and the posting was
+# dropped as out-of-area. Measured against TIAA's live board, every NYC posting
+# was being lost this way — NYC is a PRIMARY metro.
+#
+# Multi-site postings are hit hardest: they carry the "N Locations" placeholder
+# instead of a location, so the path is the only thing there is to parse.
+# ---------------------------------------------------------------------------
+
+MULTI_WORD_PATHS = [
+    ("New-York-NY-USA", "NYC"),
+    ("New-York-New-York-United-States-of-America", "NYC"),
+    ("Research-Triangle-Park-NC", "RTP/Raleigh-Durham"),
+    ("Chapel-Hill-NC", "RTP/Raleigh-Durham"),
+    ("San-Jose-CA-USA", "Bay Area"),
+    ("Santa-Clara-CA", "Bay Area"),
+    ("Long-Island-City-NY", "NYC"),
+]
+
+SINGLE_WORD_PATHS = [
+    ("Charlotte-NC", "Charlotte"),
+    ("Charlotte-NC-USA", "Charlotte"),
+    ("Dallas-TX-USA", "Dallas"),
+    ("US-NC-Durham", "RTP/Raleigh-Durham"),
+    ("United-States-North-Carolina-Durham", "RTP/Raleigh-Durham"),
+]
+
+
+@pytest.mark.parametrize("segment,metro", MULTI_WORD_PATHS + SINGLE_WORD_PATHS)
+def test_location_from_path_resolves_the_metro(segment, metro):
+    from pipeline.geo import classify_location
+
+    resolved = workday.location_from_path(f"/job/{segment}/Some-Title_JR1")
+    metro_class, matched = classify_location(resolved)
+    assert matched == metro, f"{segment!r} resolved to {resolved!r}"
+    assert metro_class in {"primary", "secondary"}
+
+
+@pytest.mark.parametrize("segment", ["Pune-India", "Bermuda", "Mumbai-India", ""])
+def test_location_from_path_does_not_invent_a_us_metro(segment):
+    """The fix must not turn a foreign site into a target metro."""
+    from pipeline.geo import classify_location
+
+    resolved = workday.location_from_path(f"/job/{segment}/Some-Title_JR1")
+    assert classify_location(resolved)[0] == "none"
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-18: an internship reached the hardware list because the aggregator
+# truncated its title. The URL slug still carried the full one.
+# ---------------------------------------------------------------------------
+
+
+def test_title_from_url_recovers_the_full_title():
+    assert workday.title_from_url(
+        "https://draper.wd5.myworkdayjobs.com/Draper_Careers/job/Cambridge-MA/"
+        "Embedded-Quality---Fielded-Systems-Intern_JR002718"
+    ) == "Embedded Quality Fielded Systems Intern"
+
+
+def test_title_from_url_ignores_a_non_workday_url():
+    assert workday.title_from_url("https://jobs.lever.co/shieldai/f6bbec19") == ""
+    assert workday.title_from_url("") == ""

@@ -13,3 +13,7 @@ state.db
 state.db-journal
 state.db-wal
 state.db-shm
+
+# tools/clean_usage.py keeps a local safety copy of the usage ledger
+# before rewriting it. Useful to have on disk, not in history.
+*.bak

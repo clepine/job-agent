@@ -21,6 +21,8 @@ import re
 from dataclasses import dataclass
 from typing import Optional
 
+from sources import workday
+
 from .geo import MetroClass, classify_location
 
 # ---------------------------------------------------------------------------
@@ -234,6 +236,55 @@ STAGES = (
 )
 
 
+def max_age_for(metro_class: str, limits: dict) -> Optional[int]:
+    """The posting-age cutoff that applies to one metro class.
+
+    Owner's call, 2026-08-19, replacing a single global 7 days.
+
+    A 7-day window was measured in August against the whole board list and ran
+    a healthy surplus — 119 software and 67 hardware postings already past the
+    filters. But that surplus is not distributed the way his priorities are.
+    Broken down by metro on 2026-08-19 the same pool held:
+
+        Bay Area 392   Seattle 106   NYC 95
+        Boston 37      Chicago 21    Charlotte 3    RTP/Raleigh-Durham 1
+
+    So the window was abundant exactly where he is least likely to move and
+    starving in the two markets he actually lives near. The obvious hypothesis
+    — missing employers — was tested and rejected: eighteen additional boards,
+    all probed live and answering (Truist, Duke Energy, TIAA, Epic Games,
+    Pendo, Bandwidth, SAS, Toast, Klaviyo, Cognex, Marvell, Cadence and
+    others), contribute FOUR postings inside 7 days and FIFTY-THREE with no age
+    limit. Epic Games, Bandwidth and Pendo each have RTP new-grad engineering
+    roles 13-29 days old. They are open reqs; the cutoff was throwing them away.
+
+    The intent of the original decision — only genuinely fresh reqs are worth
+    his time — is preserved where supply justifies it. In the five primary
+    metros, where a month can pass without a single qualifying posting, a
+    three-week-old req is still a real lead.
+
+    Note for whoever tunes this next: the FETCH-side cutoff must be the most
+    generous of these values, not this one. Metro class is not known until
+    after the location filter runs, so fetching to the 7-day cutoff would throw
+    away the primary-metro postings before anything could classify them.
+    """
+    primary = limits.get("max_posting_age_days_primary")
+    default = limits.get("max_posting_age_days")
+    if metro_class == "primary" and primary:
+        return int(primary)
+    return int(default) if default else None
+
+
+def fetch_max_age(limits: dict) -> Optional[int]:
+    """The most generous cutoff, for the fetch layer. See max_age_for()."""
+    values = [
+        limits.get("max_posting_age_days"),
+        limits.get("max_posting_age_days_primary"),
+    ]
+    values = [int(v) for v in values if v]
+    return max(values) if values else None
+
+
 def check_age(age_days: Optional[int], max_age_days: Optional[int]) -> FilterResult:
     """Drop postings older than the cutoff.
 
@@ -332,6 +383,38 @@ def check_title_level(title: str) -> FilterResult:
     return FilterResult(True)
 
 
+def check_url_title(url: str) -> FilterResult:
+    """Re-run the title gates against the title encoded in the posting URL.
+
+    A second, independent witness to what a posting is called. The aggregator
+    READMEs truncate titles at a fixed width, and a truncated title can hide the
+    exact word that disqualifies it: Draper's "Embedded Quality & Fielded
+    Systems Intern" arrives as "...Systems In", which contains no "intern" for
+    check_title_discipline to match. On 2026-08-18 that internship was the top
+    hardware pick of a real email.
+
+    Hydration usually restores the full title, but it is best-effort over the
+    network and nothing ever re-hydrates a posting already in the database, so
+    one failed request meant a permanently disqualifier-blind title. This check
+    needs no request.
+
+    REJECT-ONLY, by construction. The URL slug is lossy (Workday collapses "&"
+    and "," into dashes), so it is never good enough to display or to rescue a
+    posting the real title already failed — it can only add a rejection the
+    truncated title was hiding. A non-Workday URL yields no title and passes.
+    """
+    probe = workday.title_from_url(url)
+    if not probe:
+        return FilterResult(True)
+    for check in (check_title_seniority, check_title_discipline, check_title_level):
+        result = check(probe)
+        if not result.passed:
+            return FilterResult(
+                False, result.stage, f"{result.reason} (from URL slug: {probe!r})"
+            )
+    return FilterResult(True)
+
+
 def check_location(location: str) -> FilterResult:
     metro_class, metro = classify_location(location)
     if metro_class == "none":
@@ -383,9 +466,15 @@ def check_description(description: str) -> FilterResult:
     return FilterResult(True, clearance_advantage=obtainable)
 
 
-def evaluate(title: str, location: str, description: str = "") -> FilterResult:
+def evaluate(
+    title: str, location: str, description: str = "", url: str = ""
+) -> FilterResult:
     """Run every stage in order. Returns the first failure, or a pass carrying
-    the metro classification and the clearance-advantage flag."""
+    the metro classification and the clearance-advantage flag.
+
+    `url` is optional and reject-only: it lets check_url_title catch a
+    disqualifier that a truncated title was hiding.
+    """
     r = check_title_seniority(title)
     if not r.passed:
         return r
@@ -393,6 +482,9 @@ def evaluate(title: str, location: str, description: str = "") -> FilterResult:
     if not r.passed:
         return r
     r = check_title_level(title)
+    if not r.passed:
+        return r
+    r = check_url_title(url)
     if not r.passed:
         return r
     loc = check_location(location)
@@ -414,7 +506,7 @@ def filter_jobs(jobs) -> tuple[list, dict[str, int]]:
     counts = {stage: 0 for stage in STAGES}
     survivors = []
     for job in jobs:
-        result = evaluate(job.title, job.location, job.description)
+        result = evaluate(job.title, job.location, job.description, job.url)
         if result.passed:
             job.metro_class = result.metro_class
             job.metro = result.metro

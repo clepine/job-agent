@@ -48,7 +48,14 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # 40, raised from 25 on 2026-08-19. The fetch got materially more
+    # expensive when limits.max_posting_age_days_primary widened the Workday
+    # cutoff from 7 days to 30 — RTX alone goes from ~50 pages to ~223.
+    # Concurrent page waves brought that back under control, but the headroom
+    # that used to exist is gone, and a timeout here is the worst failure mode
+    # available: the run is killed mid-flight, so he gets a failure email
+    # instead of matches, every single morning, until someone notices.
+    timeout-minutes: 40
 
     steps:
       - name: Is it actually 6:30 AM in New York?
