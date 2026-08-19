@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS jobs (
     source            TEXT NOT NULL DEFAULT '',
     track             TEXT NOT NULL DEFAULT 'software',
     shown_at          TEXT,
+    -- Recorded by `run.py --applied <job-id>`. Applied jobs are excluded from
+    -- every candidate query so a role can never be surfaced twice.
+    applied_at        TEXT,
     tier              INTEGER NOT NULL DEFAULT 2,
     metro             TEXT,
     metro_class       TEXT NOT NULL DEFAULT 'none',
@@ -44,10 +47,6 @@ CREATE TABLE IF NOT EXISTS jobs (
     resume_hash       TEXT NOT NULL DEFAULT '',
     dedupe_key        TEXT NOT NULL DEFAULT ''
 );
-CREATE INDEX IF NOT EXISTS idx_jobs_dedupe   ON jobs(dedupe_key);
-CREATE INDEX IF NOT EXISTS idx_jobs_unshown  ON jobs(shown_at, track, fit_score);
-CREATE INDEX IF NOT EXISTS idx_jobs_unscored ON jobs(scored_at, resume_hash);
-
 CREATE TABLE IF NOT EXISTS runs (
     started_at   TEXT PRIMARY KEY,
     finished_at  TEXT,
@@ -59,6 +58,18 @@ CREATE TABLE IF NOT EXISTS runs (
     est_cost_usd REAL NOT NULL DEFAULT 0.0,
     notes        TEXT NOT NULL DEFAULT ''
 );
+"""
+
+
+# Indexes are applied AFTER _migrate(), not as part of SCHEMA. They reference
+# columns (resume_hash, applied_at) that an older database does not have yet,
+# and CREATE INDEX on a missing column is a hard error — so creating them in the
+# same script as the table made a pre-existing database impossible to open.
+INDEXES = """
+CREATE INDEX IF NOT EXISTS idx_jobs_dedupe   ON jobs(dedupe_key);
+CREATE INDEX IF NOT EXISTS idx_jobs_unshown  ON jobs(shown_at, track, fit_score);
+CREATE INDEX IF NOT EXISTS idx_jobs_unscored ON jobs(scored_at, resume_hash);
+CREATE INDEX IF NOT EXISTS idx_jobs_applied  ON jobs(applied_at);
 """
 
 
@@ -82,7 +93,10 @@ def _dt(value: Optional[str]) -> Optional[datetime]:
 def _migrate(conn: sqlite3.Connection) -> None:
     """Additive migrations for databases created by an earlier version."""
     existing = {r[1] for r in conn.execute("PRAGMA table_info(jobs)")}
-    for column, ddl in (("resume_hash", "TEXT NOT NULL DEFAULT ''"),):
+    for column, ddl in (
+        ("resume_hash", "TEXT NOT NULL DEFAULT ''"),
+        ("applied_at", "TEXT"),
+    ):
         if column not in existing:
             conn.execute(f"ALTER TABLE jobs ADD COLUMN {column} {ddl}")
 
@@ -96,6 +110,7 @@ def connect(path: str | Path) -> Iterator[sqlite3.Connection]:
     try:
         conn.executescript(SCHEMA)
         _migrate(conn)
+        conn.executescript(INDEXES)
         yield conn
         conn.commit()
     finally:
@@ -116,6 +131,7 @@ def _row_to_job(row: sqlite3.Row) -> Job:
         source=row["source"],
         track=row["track"],
         shown_at=_dt(row["shown_at"]),
+        applied_at=_dt(row["applied_at"]),
         tier=row["tier"],
         metro=row["metro"],
         metro_class=row["metro_class"],
@@ -143,7 +159,8 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[Job]) -> int:
             (
                 j.id, j.company, j.title, j.location, j.url, j.ats, j.description,
                 _iso(j.posted_at), _iso(j.first_seen_at) or _iso(datetime.now(timezone.utc)),
-                j.source, j.track, _iso(j.shown_at), j.tier, j.metro, j.metro_class,
+                j.source, j.track, _iso(j.shown_at), _iso(j.applied_at),
+                j.tier, j.metro, j.metro_class,
                 int(j.clearance_advantage), j.fit_score, j.fit_rationale,
                 _iso(j.scored_at), j.resume_hash, "|".join(j.dedupe_key),
             )
@@ -151,10 +168,10 @@ def upsert(conn: sqlite3.Connection, jobs: Iterable[Job]) -> int:
     cur = conn.executemany(
         """INSERT OR IGNORE INTO jobs
            (id, company, title, location, url, ats, description, posted_at,
-            first_seen_at, source, track, shown_at, tier, metro, metro_class,
-            clearance_advantage, fit_score, fit_rationale, scored_at,
-            resume_hash, dedupe_key)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            first_seen_at, source, track, shown_at, applied_at, tier, metro,
+            metro_class, clearance_advantage, fit_score, fit_rationale,
+            scored_at, resume_hash, dedupe_key)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         rows,
     )
     return cur.rowcount
@@ -194,7 +211,7 @@ def unscored(
     """
     rows = conn.execute(
         """SELECT * FROM jobs
-           WHERE track = ? AND shown_at IS NULL
+           WHERE track = ? AND shown_at IS NULL AND applied_at IS NULL
              AND (scored_at IS NULL OR resume_hash != ?)
            ORDER BY (scored_at IS NULL) DESC,
                     (metro_class = 'primary') DESC,
@@ -211,7 +228,7 @@ def count_stale_scores(conn: sqlite3.Connection, resume_hash: str) -> int:
     return int(
         conn.execute(
             "SELECT COUNT(*) FROM jobs WHERE scored_at IS NOT NULL "
-            "AND shown_at IS NULL AND resume_hash != ?",
+            "AND shown_at IS NULL AND applied_at IS NULL AND resume_hash != ?",
             (resume_hash,),
         ).fetchone()[0]
     )
@@ -227,7 +244,7 @@ def candidates(
     """
     rows = conn.execute(
         """SELECT * FROM jobs
-           WHERE shown_at IS NULL AND scored_at IS NOT NULL
+           WHERE shown_at IS NULL AND applied_at IS NULL AND scored_at IS NOT NULL
              AND track = ? AND resume_hash = ?
            ORDER BY fit_score DESC, COALESCE(posted_at, first_seen_at) DESC
            LIMIT ?""",
@@ -246,6 +263,43 @@ def mark_shown(conn: sqlite3.Connection, job_ids: Iterable[str]) -> int:
     ids = list(job_ids)
     conn.executemany("UPDATE jobs SET shown_at=? WHERE id=?", [(now, i) for i in ids])
     return len(ids)
+
+
+def mark_applied(
+    conn: sqlite3.Connection, job_id: str, when: Optional[datetime] = None
+) -> Optional[Job]:
+    """Record that the owner applied. Returns the job, or None if unknown.
+
+    Also stamps `shown_at` when it is still null: applying to a job the email
+    has not surfaced yet (found some other way, or dug out of the ledger) must
+    not leave it queued to arrive tomorrow as a fresh suggestion.
+
+    Idempotent — re-applying keeps the ORIGINAL date, because the first
+    application is the one whose age matters when chasing a response.
+    """
+    row = conn.execute(
+        "SELECT applied_at FROM jobs WHERE id = ?", (job_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    if not row["applied_at"]:
+        stamp = _iso(when or datetime.now(timezone.utc))
+        conn.execute(
+            "UPDATE jobs SET applied_at = ?, "
+            "shown_at = COALESCE(shown_at, ?) WHERE id = ?",
+            (stamp, stamp, job_id),
+        )
+    return get(conn, job_id)
+
+
+def applied(conn: sqlite3.Connection, limit: int = 500) -> list[Job]:
+    """Everything applied to, most recent first."""
+    rows = conn.execute(
+        "SELECT * FROM jobs WHERE applied_at IS NOT NULL "
+        "ORDER BY applied_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+    return [_row_to_job(r) for r in rows]
 
 
 def record_run(conn: sqlite3.Connection, started: datetime, **fields) -> None:
@@ -276,7 +330,9 @@ def stats(conn: sqlite3.Connection) -> dict:
         "total": one("SELECT COUNT(*) FROM jobs"),
         "scored": one("SELECT COUNT(*) FROM jobs WHERE scored_at IS NOT NULL"),
         "shown": one("SELECT COUNT(*) FROM jobs WHERE shown_at IS NOT NULL"),
+        "applied": one("SELECT COUNT(*) FROM jobs WHERE applied_at IS NOT NULL"),
         "unshown_scored": one(
-            "SELECT COUNT(*) FROM jobs WHERE shown_at IS NULL AND scored_at IS NOT NULL"
+            "SELECT COUNT(*) FROM jobs WHERE shown_at IS NULL "
+            "AND applied_at IS NULL AND scored_at IS NOT NULL"
         ),
     }

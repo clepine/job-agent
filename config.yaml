@@ -49,7 +49,16 @@ limits:
   # original createdAt, which surfaces reqs open for literally years — a
   # 1,400-day-old posting is not a lead. Postings with NO date are kept
   # (unknown age is not the same as old age) and simply age-stamped "unknown".
-  max_posting_age_days: 180
+  # Owner's call, 2026-08-18: only genuinely fresh reqs are worth his time.
+  # Measured against the pool that day, a 7-day window holds 119 software and
+  # 67 hardware postings already past the filters — about 17 and 10 arriving
+  # per day against the 5+5 consumed, so it runs a surplus in peak season.
+  #
+  # SEASONAL RISK: that inflow was measured in August, at the top of new-grad
+  # hiring. If the email starts coming up short in the spring, this is the
+  # first number to raise (14 or 30) — run.py will say plainly whether the
+  # cause is an empty pool or an unscored backlog, so don't guess.
+  max_posting_age_days: 7
   # Diversity guard: at most this many slots per company per track, so one
   # company with a big board cannot take the whole email.
   max_per_company: 2
@@ -59,6 +68,12 @@ email:
   per_track: 5
   tier1_quota: 2                # 2 from Tier 1 + 3 from Tier 2, per PLAN §1
   tier2_quota: 3
+  # A Tier-1 slot is a PREFERENCE, not an obligation. Without this floor the
+  # quota forces prestige over fit: on 2026-08-18 a Waymo ML ASIC role scoring
+  # 30 (its own rationale said the owner lacks the tapeout experience) took a
+  # slot from a Draper role scoring 50, and an Anduril role scoring 45
+  # displaced two roles scoring 60. Below this score, backfill from Tier 2.
+  tier1_min_fit: 50
 
 geography:
   primary_bonus: 15
@@ -69,6 +84,26 @@ fetch:
   max_concurrency: 8
   retries: 2
   user_agent: "job-agent/1.0 (+https://github.com/clepine/job-agent)"
+  # Workday only. Its CxS endpoint hard-caps a page at 20 postings (limit: 21
+  # returns HTTP 400), so a large board costs one request per 20 postings.
+  # Results come back strictly newest-first, so the fetcher normally stops as
+  # soon as a whole page is older than limits.max_posting_age_days; this is the
+  # backstop for when that cutoff is unset or a tenant ignores the sort.
+  #
+  # 60, not 25. Measured 2026-08-18 against the 7-day window: RTX needs 58
+  # pages to reach the cutoff, Northrop Grumman 40, Thermo Fisher 39. At 25
+  # the cap fired FIRST on all three, silently truncating the defense tier to
+  # its newest 500 postings and dropping 3-7-day-old reqs — the exact failure
+  # mode where the source looks like it works and quietly under-returns.
+  # Raising it to 60 cost ~60s of wall clock across all 130 boards (a full run
+  # went 2m37s -> 3m36s), because every ordinary board still stops early
+  # (Micron 19 pages, Draper 11). It immediately recovered an RTX "Electrical
+  # Engineer I - Test Solutions" in Boston that the 25-page cap was dropping.
+  #
+  # One known outlier: CVS Health posts so heavily that even 60 pages stays
+  # inside a single day. It is capped, and that is fine — it is a pharmacy
+  # chain, not a target employer.
+  workday_max_pages: 60
 
 paths:
   # Local working store. Gitignored — see state/ below.

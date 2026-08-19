@@ -32,6 +32,28 @@ def _no_api_key():
         os.environ["ANTHROPIC_API_KEY"] = saved
 
 
+@pytest.fixture(autouse=True)
+def _isolate_usage_log(tmp_path, monkeypatch):
+    """Never let a test append to the REAL out/usage.jsonl.
+
+    Every LLM stage is exercised against StubAnthropic, whose canned usage is a
+    flat 1000-in / 200-out. Those rows were being written into the same ledger
+    the README tells the owner to total up to check real spend, so a few test
+    runs made it read ~$2 of spend that never happened. With a ~$4.90 balance,
+    a money file that lies upward is worse than no money file.
+
+    Patched at the writer rather than in config so it holds no matter how a
+    test builds its LlmClient.
+    """
+    from pipeline import llm as llm_mod
+
+    real_append = llm_mod._append_usage_log
+    sink = tmp_path / "usage.jsonl"
+    monkeypatch.setattr(
+        llm_mod, "_append_usage_log", lambda _path, entry: real_append(sink, entry)
+    )
+
+
 class StubUsage:
     def __init__(self, i=1000, o=200, cr=0, cw=0):
         self.input_tokens = i

@@ -140,6 +140,7 @@ def render_email(
     cfg: dict,
     *,
     run_notes: Optional[Sequence[str]] = None,
+    applied_total: int = 0,
 ) -> RenderedEmail:
     jd_max_chars = int(cfg["limits"].get("jd_max_chars", 1600))
     today = date.today().isoformat()
@@ -155,6 +156,7 @@ def render_email(
         {_e(today)} &middot; {n_sw} software &middot; {n_hw} hardware &middot;
         every posting is new to you and age-stamped with its true posting date
       </p>
+      {f'<p style="font-size:12px;color:#777;margin:0 0 14px 0;">You have applied to <b>{applied_total}</b> role(s) so far. Record a new one with <code>python run.py --applied &lt;job-id&gt;</code> &mdash; applied roles are never shown again.</p>' if applied_total else ''}
       {notes_html}
       {_track_section("Software", software, resume_sw, jd_max_chars)}
       {_track_section("Hardware", hardware, resume_hw, jd_max_chars)}

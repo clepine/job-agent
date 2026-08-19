@@ -187,3 +187,137 @@ def score_jobs(
             warnings.append(f"{label}: {len(missing)} postings came back unscored")
 
     return scored, total, warnings
+
+
+def clear_score(conn, job_id: str) -> bool:
+    """Forget a job's score so it is eligible to be computed again.
+
+    Score-once is the right default — a posting's fit to a fixed resume does not
+    change between days — but it makes a bad score permanent until the resume
+    itself changes. This is the escape hatch for the case where the model simply
+    got one wrong.
+    """
+    cur = conn.execute(
+        "UPDATE jobs SET fit_score = NULL, fit_rationale = '', "
+        "scored_at = NULL, resume_hash = '' WHERE id = ?",
+        (job_id,),
+    )
+    return cur.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# CLI — on-demand re-scoring of a single posting.
+#
+# Lives here rather than on run.py for the same reason pipeline/tailor.py has
+# its own entry point: both are per-job, on-demand operations that SPEND money,
+# and neither belongs in the unattended daily path. run.py stays the thing cron
+# calls; these are the things the owner calls by hand.
+# ---------------------------------------------------------------------------
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    import sys
+
+    from . import db
+    from .config import load_config, repo_path
+    from .fingerprint import resume_hash
+    from .jd import compress_jd
+    from .llm import BudgetExceeded, LlmClient, api_key_present
+
+    parser = argparse.ArgumentParser(
+        prog="python -m pipeline.score",
+        description="Recompute the fit score for one posting (the job id is "
+        "printed in the email under each match).",
+    )
+    parser.add_argument("--rescore", metavar="JOB_ID", required=True,
+                        help="job id whose cached score should be discarded and recomputed")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="show what would be sent; makes no API call and spends nothing")
+    parser.add_argument("--db", help="override the local working database path")
+    parser.add_argument("--state", help="override the committed JSON state path")
+    args = parser.parse_args(argv)
+
+    cfg = load_config()
+    db_path = repo_path(args.db or cfg["paths"]["db"])
+    state_path = repo_path(args.state or cfg["paths"]["state"])
+
+    sys.path.insert(0, str(repo_path()))
+    from resume.render import load_resume  # noqa: PLC0415
+
+    with db.connect(db_path) as conn:
+        from . import state as state_mod
+
+        state_mod.load(conn, state_path)
+        job = db.get(conn, args.rescore)
+        if job is None:
+            print(f"error: no job with id {args.rescore!r} in the database", file=sys.stderr)
+            return 2
+
+        master_path = (
+            cfg["paths"]["resume_hw"] if job.track == "hardware" else cfg["paths"]["resume_sw"]
+        )
+        resume = load_resume(repo_path(master_path))
+
+        print(f"Job     : {job.company} — {job.title}")
+        print(f"Track   : {job.track}  ({job.location})")
+        print(f"Link    : {job.url}")
+        print(f"Current : {job.fit_score} — {job.fit_rationale or '(none)'}")
+
+        # A score is only meaningful against a body. One left in the database
+        # days ago has none — the ledger deliberately does not persist them —
+        # so re-fetch it rather than silently re-scoring an empty posting.
+        if not job.description:
+            from sources import hydrate  # noqa: PLC0415
+            from sources.base import make_client  # noqa: PLC0415
+
+            client = make_client(cfg)
+            try:
+                ok = hydrate.hydrate_one(client, job)
+            finally:
+                client.close()
+            print(f"Body    : re-fetched ({len(job.description)} chars)" if ok
+                  else "Body    : could not be re-fetched; scoring on title and location alone")
+            if ok:
+                db.fill_descriptions(conn, [job])
+
+        if args.dry_run:
+            jd = compress_jd(job.description, int(cfg["limits"]["jd_max_chars"]))
+            print(f"\n--dry-run: no API call made, nothing spent.")
+            print(f"compressed JD: {len(jd)} chars (from {len(job.description)})")
+            return 0
+
+        if not api_key_present():
+            print("error: ANTHROPIC_API_KEY is not set", file=sys.stderr)
+            return 2
+
+        if not clear_score(conn, job.id):
+            print(f"error: could not clear the score for {job.id!r}", file=sys.stderr)
+            return 2
+        job.fit_score, job.fit_rationale, job.scored_at = None, "", None
+
+        llm = LlmClient(cfg, run_id=f"rescore-{job.id}")
+        try:
+            scored, usage, warnings = score_jobs(llm, [job], resume, job.track, cfg)
+        except BudgetExceeded as exc:
+            print(f"BUDGET STOP: {exc}", file=sys.stderr)
+            return 3
+        for warning in warnings:
+            print(f"  ! {warning}")
+        if not scored:
+            print("the model returned no score; the posting is left unscored", file=sys.stderr)
+            return 3
+
+        db.save_scores(conn, scored, resume_hash(resume))
+        print(f"\nNew     : {scored[0].fit_score} — {scored[0].fit_rationale}")
+        print(f"Tokens  : {usage.input_tokens} in / {usage.output_tokens} out")
+        print(f"Cost    : ${llm.ledger.spent_usd:.4f} ({llm.ledger.calls} call)")
+        written = state_mod.dump(conn, state_path)
+        print(f"Ledger  : wrote {written} records to {state_path.name}")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(main())

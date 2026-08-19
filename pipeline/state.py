@@ -46,6 +46,12 @@ FIELDS = (
     "posted_at",
     "first_seen_at",
     "shown_at",
+    # Grouped with shown_at because that is where a human reading the ledger
+    # expects it. Adding a key costs one added line per record either way; what
+    # must never change is the order of the keys ALREADY here.
+    # Ledgers written before this field simply lack it, and load() reads a
+    # missing key as None, so old files stay readable.
+    "applied_at",
     "fit_score",
     "fit_rationale",
     "scored_at",
@@ -133,4 +139,5 @@ def summarize(path: str | Path) -> dict:
         "count": len(jobs),
         "shown": sum(1 for j in jobs if j.get("shown_at")),
         "scored": sum(1 for j in jobs if j.get("scored_at")),
+        "applied": sum(1 for j in jobs if j.get("applied_at")),
     }

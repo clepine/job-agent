@@ -50,6 +50,34 @@ ROW = re.compile(
 
 TRUNCATED = re.compile(r"\.\.\.\s*$|…\s*$")
 
+# After the ellipsis is stripped, a cut mid-phrase leaves dangling punctuation
+# ("Automation and Design Test Engineer,"). Strip it so the title never *looks*
+# broken even when we cannot recover the tail.
+_DANGLING = re.compile(r"[\s,;:|/&\-\u2013\u2014]+$")
+
+
+def _recover_tail(title: str, url: str) -> str:
+    """Recover the words an aggregator table cut off, using the apply URL slug.
+
+    Repo tables truncate at a fixed width, but most boards put the full title in
+    the URL slug. Hydration normally repairs this, but it only works for the
+    four ATSes we can fetch — jobs.apple.com and friends land as `ats: other`
+    and would otherwise ship a visibly chopped title.
+
+    Best-effort and append-only: it never replaces the parsed title, and bails
+    out unless the slug demonstrably starts with the title we already have.
+    """
+    from urllib.parse import urlparse
+
+    slug = urlparse(url).path.rstrip("/").split("/")[-1]
+    if not slug or "-" not in slug:
+        return ""
+    words = [w for w in re.split(r"[-_]+", slug.lower()) if w and not w.isdigit()]
+    head = [w for w in re.split(r"[^a-z0-9]+", title.lower()) if w]
+    if not head or len(words) <= len(head) or words[: len(head)] != head:
+        return ""
+    return " ".join(w.capitalize() for w in words[len(head):])
+
 _AGE = re.compile(r"^\s*(\d+)\s*([mhdw])\s*$", re.I)
 _AGE_UNITS = {
     "m": timedelta(minutes=1),
@@ -102,10 +130,18 @@ def parse_readme(markdown: str, track: str, source: str) -> list[Job]:
         location = m.group("location")
         url = m.group("url")
         truncated = bool(TRUNCATED.search(title) or TRUNCATED.search(location))
+        clean_title = _DANGLING.sub("", TRUNCATED.sub("", title).strip())
+        if truncated:
+            tail = _recover_tail(clean_title, url)
+            if tail:
+                # Rejoin with the separator the truncation ate, when we saw one.
+                sep = ", " if TRUNCATED.sub("", title).rstrip().endswith(",") else " "
+                clean_title = f"{clean_title}{sep}{tail}"
+                truncated = False
         jobs.append(
             Job(
                 company=m.group("company").strip(),
-                title=TRUNCATED.sub("", title).strip(),
+                title=clean_title,
                 location=TRUNCATED.sub("", location).strip(),
                 url=url,
                 ats=_ats_for(url),

@@ -71,7 +71,11 @@ def pick_track(candidates: Sequence[Job], cfg: dict, track: str) -> Selection:
             picked.append(job)
         return picked
 
-    tier1 = [j for j in ranked if j.tier == 1]
+    # A Tier-1 slot must be earned. Prestige never displaces a materially
+    # better-matched Tier-2 role; below the floor the slot is backfilled.
+    t1_floor = int(email_cfg.get("tier1_min_fit", 50))
+    tier1 = [j for j in ranked if j.tier == 1 and (j.fit_score or 0) >= t1_floor]
+    benched_t1 = [j for j in ranked if j.tier == 1 and (j.fit_score or 0) < t1_floor]
     tier2 = [j for j in ranked if j.tier != 1]
 
     sel = Selection()
@@ -82,10 +86,19 @@ def pick_track(candidates: Sequence[Job], cfg: dict, track: str) -> Selection:
     # Backfill whichever side came up short.
     if len(chosen) < want:
         shortfall = want - len(chosen)
-        backfill = take(ranked, shortfall, chosen)
+        # Backfill from Tier 2 first; a sub-floor Tier 1 is a last resort and
+        # can only take a slot nothing better wanted.
+        backfill = take(tier2 + benched_t1, shortfall, chosen)
         if backfill:
             sel.backfilled = len(backfill)
             got_t1 = len([j for j in chosen if j.tier == 1])
+            if benched_t1 and got_t1 < t1_quota:
+                worst = max((j.fit_score or 0) for j in benched_t1)
+                sel.notes.append(
+                    f"{len(benched_t1)} Tier 1 {track} role(s) were held back for "
+                    f"scoring below the fit floor of {t1_floor} (best was {worst}) — "
+                    f"better-matched Tier 2 roles took those slots instead."
+                )
             if got_t1 < t1_quota:
                 sel.notes.append(
                     f"Only {got_t1} Tier 1 {track} match{'' if got_t1 == 1 else 'es'} "

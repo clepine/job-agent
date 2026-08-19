@@ -54,6 +54,46 @@ def _hr(title: str) -> None:
     print(f"\n{'=' * 62}\n{title}\n{'=' * 62}")
 
 
+def _applied_cli(args) -> int:
+    """`--applied` / `--list-applied`: bookkeeping only. No fetch, no LLM call.
+
+    Deliberately short-circuits before the pipeline. Recording an application is
+    a five-second operation the owner will do right after hitting submit; making
+    him wait three minutes for a full fetch would guarantee he stops doing it.
+    """
+    cfg = load_config()
+    db_path = repo_path(args.db or cfg["paths"]["db"])
+    state_path = repo_path(args.state or cfg["paths"]["state"])
+
+    with db.connect(db_path) as conn:
+        state_mod.load(conn, state_path)
+
+        if args.applied:
+            job = db.mark_applied(conn, args.applied)
+            if job is None:
+                print(
+                    f"error: no job with id {args.applied!r} in the ledger",
+                    file=sys.stderr,
+                )
+                return 2
+            print(f"Applied : {job.company} — {job.title}")
+            print(f"Location: {job.location}")
+            print(f"Link    : {job.url}")
+            print(f"Recorded: {job.applied_at:%Y-%m-%d}")
+            print("This job will never be shown again.")
+
+        if args.list_applied:
+            rows = db.applied(conn)
+            print(f"{len(rows)} application(s) recorded\n")
+            for job in rows:
+                when = job.applied_at.strftime("%Y-%m-%d") if job.applied_at else "?"
+                print(f"  {when}  {job.company[:26]:<28} {job.title[:52]}")
+
+        written = state_mod.dump(conn, state_path)
+        print(f"\nwrote {written} records to {state_path.name}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dry-run", action="store_true", help="write the email to out/<date>/email.html instead of sending")
@@ -62,12 +102,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--skip-repos", action="store_true", help="skip the GitHub aggregator READMEs")
     parser.add_argument("--skip-boards", action="store_true", help="skip the ATS boards")
     parser.add_argument("--max-scores", type=int, help="override limits.max_new_scores_per_run")
+    parser.add_argument("--applied", metavar="JOB_ID", help="record that you applied to this job, then exit (free, no LLM call)")
+    parser.add_argument("--list-applied", action="store_true", help="list everything you have applied to, then exit")
     parser.add_argument("--db", help="override the local working database path")
     parser.add_argument("--state", help="override the committed JSON state path")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
     _setup_logging(args.verbose)
+    if args.applied or args.list_applied:
+        return _applied_cli(args)
     started = datetime.now(timezone.utc)
     cfg = load_config()
     limits = cfg["limits"]
@@ -201,7 +245,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"post-hydration duplicates dropped: {post_hydration_dupes}")
         survivors = deduped
 
-        print(f"SURVIVORS             : {len(survivors)}")
+        print(f"NEW POSTINGS ADDED    : {len(survivors)}  (this run only; the scoring stage also draws on the backlog)")
         by_track = {t: sum(1 for j in survivors if j.track == t) for t in ("software", "hardware")}
         by_class = {}
         for job in survivors:
@@ -331,7 +375,9 @@ def main(argv: list[str] | None = None) -> int:
         # ---------------- email ----------------
         _hr("EMAIL")
         rendered = email_mod.render_email(
-            sw_sel, hw_sel, resume_sw, resume_hw, cfg, run_notes=run_notes
+            sw_sel, hw_sel, resume_sw, resume_hw, cfg,
+            run_notes=run_notes,
+            applied_total=db.stats(conn)["applied"],
         )
         print(f"subject: {rendered.subject}")
 
@@ -367,10 +413,17 @@ def main(argv: list[str] | None = None) -> int:
         print(f"jobs in db  : {before['total']} -> {after['total']}")
         print(f"scored      : {before['scored']} -> {after['scored']}")
         print(f"shown       : {before['shown']} -> {after['shown']}")
+        print(f"applied     : {after['applied']} (never shown again)")
         print(f"backlog     : {after['unshown_scored']} scored and not yet shown")
 
         written = state_mod.dump(conn, state_path)
-        print(f"wrote {written} records to {state_path.relative_to(repo_path())}")
+        try:
+            where = state_path.relative_to(repo_path())
+        except ValueError:
+            # --state can point outside the repo. Reporting the absolute path is
+            # fine; crashing on the last line of a successful run is not.
+            where = state_path
+        print(f"wrote {written} records to {where}")
 
         # ---------------- machine-readable run summary ----------------
         # The workflow puts this in the GitHub Actions job summary. It must make
@@ -394,8 +447,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"| boards fetched | {report.boards_attempted} ({report.boards_failed} failed) |",
                 f"| postings pulled | {report.raw_total} |",
                 f"| new after dedupe | {len(jobs)} |",
-                f"| survived hard filters | {len(survivors)} |",
-                f"| newly scored | {scored_count}{f' ({rescored_count} re-scored after a resume edit)' if rescored_count else ''} |",
+                # These two used to read "survived hard filters: 3" next to
+                # "newly scored: 40", which looks like a contradiction. They
+                # count different populations: the first is only THIS run's
+                # arrivals, the second is drawn from the whole unscored backlog.
+                f"| new postings added this run | {len(survivors)} |",
+                f"| scored this run (incl. backlog) | {scored_count}{f' — of which {rescored_count} re-scored after a resume edit' if rescored_count else ''} |",
+                f"| applied to (all time) | {after['applied']} |",
                 f"| software selected | {n_sw} |",
                 f"| hardware selected | {n_hw} |",
                 f"| estimated cost | ${est_cost:.4f} |",

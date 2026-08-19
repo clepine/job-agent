@@ -6,10 +6,31 @@
 # Teradyne, Infineon, Raytheon, BAE, HPE, Lenovo, Red Hat, Motorola, Zebra...).
 #
 # Every entry under `boards:` was PROBED LIVE on 2026-08-18 and returned at
-# least one posting; `postings_at_validation` records how many. Entries under
-# `workday_boards:` carry real mined tenant|shard|site triples but are marked
-# valid: false because sources/workday.py is a deliberate stub — see that file
-# for what implementing it requires.
+# least one posting; `postings_at_validation` records how many.
+#
+# `workday_boards:` was probed the same way on 2026-08-18, by
+# tools/probe_workday.py, once sources/workday.py was implemented. 130 of the
+# 148 answered and are now valid: true. The 18 that did not keep valid: false
+# and carry a `note` saying exactly what happened, so nobody has to re-probe to
+# find out whether a slug is wrong or the company simply is not on Workday:
+#
+#   HTTP 422  unknown tenant — returns 422 from every shard, so it is a bad
+#             tenant name, not a bad shard. Confirmed off Workday entirely:
+#             Qorvo and Infineon (SuccessFactors), Teradyne (jobs.teradyne.com),
+#             BAE (jobs.baesystems.com), Wolfspeed (the old `cree` tenant is
+#             decommissioned), Microsoft, IBM, Honeywell, Zebra.
+#   HTTP 404  tenant and shard are right, only the site segment is wrong
+#             (errorCode S21 names the bad Job_Posting_Site_ID). Re-mineable.
+#   HTTP 401  the tenant blocks anonymous CxS access. Apple, Lenovo and
+#             Siemens Energy do this; there is no public way in.
+#
+# Several of the 18 are DUPLICATES of an entry that already works — the mined
+# slug is live and a hand-guessed one beside it is not. Raytheon is covered by
+# `RTX` (globalhr|wd5|rec_rtx_ext_gateway), Cisco by cisco|wd5|Cisco_Careers,
+# Draper by draper|wd5|Draper_Careers, Motorola by motorolasolutions|wd5|Careers.
+# MITRE is the odd one out: its endpoint is live and simply has zero postings.
+#
+# To re-probe after a slug edit:  python tools/probe_workday.py --write
 #
 # Fields
 #   company  display name used in the email
@@ -21,7 +42,7 @@
 #            is the per-posting location filter in pipeline/geo.py
 #   valid    whether a fetcher exists AND the board answered at probe time
 #
-# Totals: 160 live boards + 148 stubbed Workday = 308 entries.
+# Totals: 160 live boards + 148 Workday (130 live) = 308 entries.
 
 boards:
   - company: "OpenAI"
@@ -1482,7 +1503,7 @@ workday_boards:
     tier: 1
     metros: ["Austin", "Bay Area", "RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; tenant blocks anonymous CxS access (HTTP 401) — no public endpoint"
 
   - company: "Microsoft"
     ats: workday
@@ -1491,7 +1512,7 @@ workday_boards:
     tier: 1
     metros: ["Bay Area", "Boston", "Seattle"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "NVIDIA"
     ats: workday
@@ -1499,8 +1520,9 @@ workday_boards:
     track: both
     tier: 1
     metros: ["Austin", "Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Nvidia"
     ats: workday
@@ -1508,8 +1530,9 @@ workday_boards:
     track: both
     tier: 1
     metros: ["Austin", "Bay Area", "Boston"]
-    valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "ABB"
     ats: workday
@@ -1517,8 +1540,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Abbott"
     ats: workday
@@ -1526,8 +1550,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Aerospace Corporation"
     ats: workday
@@ -1535,8 +1560,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 317
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "AeroVironment"
     ats: workday
@@ -1544,8 +1570,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 308
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Air Liquide"
     ats: workday
@@ -1553,8 +1580,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1173
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Allegion"
     ats: workday
@@ -1562,8 +1590,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 238
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Allison Transmission"
     ats: workday
@@ -1571,8 +1600,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 90
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Altera"
     ats: workday
@@ -1580,8 +1610,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 249
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Amentum"
     ats: workday
@@ -1589,8 +1620,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Boston", "NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2528
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Analog Devices"
     ats: workday
@@ -1598,8 +1630,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Bay Area", "Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1025
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Applied Materials"
     ats: workday
@@ -1607,8 +1640,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1860
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Arrow Electronics"
     ats: workday
@@ -1616,8 +1650,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 509
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "ASML"
     ats: workday
@@ -1625,8 +1660,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 578
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "AspenTech"
     ats: workday
@@ -1634,8 +1670,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 138
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "AstraZeneca"
     ats: workday
@@ -1643,8 +1680,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1219
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Astreya"
     ats: workday
@@ -1652,8 +1690,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 190
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Autodesk"
     ats: workday
@@ -1661,8 +1700,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 423
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Axiom Space"
     ats: workday
@@ -1670,8 +1710,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 75
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "BAE Systems"
     ats: workday
@@ -1680,7 +1721,7 @@ workday_boards:
     tier: 2
     metros: ["Boston", "Huntsville"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Barclays"
     ats: workday
@@ -1688,8 +1729,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1037
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Baxter International"
     ats: workday
@@ -1697,8 +1739,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 557
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Becton Dickinson"
     ats: workday
@@ -1706,8 +1749,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 525
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "BlackRock"
     ats: workday
@@ -1715,8 +1759,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 288
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Bloomberg"
     ats: workday
@@ -1725,7 +1770,7 @@ workday_boards:
     tier: 2
     metros: ["NYC"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; tenant/shard are right but the site segment is wrong (HTTP 404 S21)"
 
   - company: "Blue Origin"
     ats: workday
@@ -1733,8 +1778,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Huntsville", "Seattle"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1488
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Boeing"
     ats: workday
@@ -1742,8 +1788,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Seattle"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 737
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Booz Allen Hamilton"
     ats: workday
@@ -1751,8 +1798,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Boston Dynamics"
     ats: workday
@@ -1760,8 +1808,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 69
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Bristol Myers Squibb"
     ats: workday
@@ -1769,8 +1818,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 694
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Broadcom"
     ats: workday
@@ -1778,8 +1828,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 357
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "CACI"
     ats: workday
@@ -1787,8 +1838,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1693
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Capital One"
     ats: workday
@@ -1796,8 +1848,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1863
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Cardinal Health"
     ats: workday
@@ -1805,8 +1858,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 804
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Carnegie Mellon University"
     ats: workday
@@ -1814,8 +1868,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 206
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Carrier Global"
     ats: workday
@@ -1823,8 +1878,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1055
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Caterpillar"
     ats: workday
@@ -1832,8 +1888,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Dallas"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 953
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "CIBC"
     ats: workday
@@ -1841,8 +1898,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Chicago"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 550
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Cigna"
     ats: workday
@@ -1850,8 +1908,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 572
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Cisco"
     ats: workday
@@ -1859,8 +1918,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area", "Dallas", "NYC", "RTP/Raleigh-Durham"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1210
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Cisco"
     ats: workday
@@ -1869,7 +1929,7 @@ workday_boards:
     tier: 2
     metros: ["Austin", "Bay Area", "RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Citi"
     ats: workday
@@ -1877,8 +1937,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Clarios"
     ats: workday
@@ -1886,8 +1947,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 202
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "CME Group"
     ats: workday
@@ -1895,8 +1957,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Chicago"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 33
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Comcast"
     ats: workday
@@ -1904,8 +1967,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 805
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Cox"
     ats: workday
@@ -1913,8 +1977,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 678
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Crane Co."
     ats: workday
@@ -1922,8 +1987,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 280
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Curtiss-Wright"
     ats: workday
@@ -1931,8 +1997,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 367
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "CVS Health"
     ats: workday
@@ -1940,8 +2007,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 19397
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Daimler Truck"
     ats: workday
@@ -1949,8 +2017,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 59
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Danaher"
     ats: workday
@@ -1958,8 +2027,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1375
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Deluxe Corp"
     ats: workday
@@ -1967,8 +2037,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 77
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Dexcom"
     ats: workday
@@ -1976,8 +2047,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 280
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Disney"
     ats: workday
@@ -1985,8 +2057,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 641
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Dow Jones"
     ats: workday
@@ -1994,8 +2067,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 172
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Draper"
     ats: workday
@@ -2003,8 +2077,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 209
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Draper"
     ats: workday
@@ -2013,7 +2088,7 @@ workday_boards:
     tier: 2
     metros: ["Boston"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; tenant/shard are right but the site segment is wrong (HTTP 404 S21)"
 
   - company: "Eversource Energy"
     ats: workday
@@ -2021,8 +2096,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 196
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "F5"
     ats: workday
@@ -2030,8 +2106,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Seattle"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 216
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Fiserv"
     ats: workday
@@ -2039,8 +2116,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 474
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "FLIR Systems"
     ats: workday
@@ -2048,8 +2126,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 690
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Freddie Mac"
     ats: workday
@@ -2057,8 +2136,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 82
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "GDIT"
     ats: workday
@@ -2066,8 +2146,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1190
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "GE Aerospace"
     ats: workday
@@ -2075,8 +2156,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 491
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "GE Healthcare"
     ats: workday
@@ -2084,8 +2166,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 975
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "GE Vernova"
     ats: workday
@@ -2093,8 +2176,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Seattle"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2115
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Generac"
     ats: workday
@@ -2102,8 +2186,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 397
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "General Motors"
     ats: workday
@@ -2111,8 +2196,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Austin", "Bay Area", "NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 868
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "GlobalFoundries"
     ats: workday
@@ -2120,8 +2206,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 633
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Guidehouse"
     ats: workday
@@ -2129,8 +2216,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 926
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Hitachi"
     ats: workday
@@ -2138,8 +2226,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Honeywell"
     ats: workday
@@ -2148,7 +2237,7 @@ workday_boards:
     tier: 2
     metros: ["Charlotte", "Phoenix"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "HP Inc"
     ats: workday
@@ -2156,8 +2245,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 748
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "HPE"
     ats: workday
@@ -2165,8 +2255,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Bay Area", "RTP/Raleigh-Durham"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1187
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "HPE (University)"
     ats: workday
@@ -2174,8 +2265,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Bay Area", "RTP/Raleigh-Durham"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1055
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "IBM"
     ats: workday
@@ -2184,7 +2276,7 @@ workday_boards:
     tier: 2
     metros: ["Austin", "NYC", "RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "ICF"
     ats: workday
@@ -2192,8 +2284,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 380
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Infineon"
     ats: workday
@@ -2202,7 +2295,7 @@ workday_boards:
     tier: 2
     metros: ["Austin", "RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Intel"
     ats: workday
@@ -2210,8 +2303,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area", "Phoenix"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 653
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Invesco"
     ats: workday
@@ -2219,8 +2313,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 245
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Jabil"
     ats: workday
@@ -2228,8 +2323,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Dallas"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1929
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "JLL"
     ats: workday
@@ -2237,8 +2333,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Johnson & Johnson"
     ats: workday
@@ -2246,8 +2343,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1772
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Johnson Controls"
     ats: workday
@@ -2255,8 +2353,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2609
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "KBR"
     ats: workday
@@ -2264,8 +2363,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Dallas", "Huntsville", "Phoenix"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1691
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "KeyBank"
     ats: workday
@@ -2273,8 +2373,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 577
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "KION Group"
     ats: workday
@@ -2282,8 +2383,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Dallas"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1008
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "KLA"
     ats: workday
@@ -2291,8 +2393,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 979
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "LabCorp"
     ats: workday
@@ -2300,8 +2403,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["RTP/Raleigh-Durham"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1734
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Leidos"
     ats: workday
@@ -2309,8 +2413,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Huntsville"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Lenovo"
     ats: workday
@@ -2319,7 +2424,7 @@ workday_boards:
     tier: 2
     metros: ["RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; tenant blocks anonymous CxS access (HTTP 401) — no public endpoint"
 
   - company: "LexisNexis Risk Solutions"
     ats: workday
@@ -2327,8 +2432,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 171
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "LPL Financial"
     ats: workday
@@ -2336,8 +2442,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 23
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Magna"
     ats: workday
@@ -2345,8 +2452,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1315
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Manulife"
     ats: workday
@@ -2354,8 +2462,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 658
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Mastercard"
     ats: workday
@@ -2363,8 +2472,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1123
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Medtronic"
     ats: workday
@@ -2372,8 +2482,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1093
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Merck & Co."
     ats: workday
@@ -2381,8 +2492,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 827
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Microchip Technology"
     ats: workday
@@ -2390,8 +2502,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 472
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Micron Technology"
     ats: workday
@@ -2399,8 +2512,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Bay Area", "Dallas"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2729
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "MITRE"
     ats: workday
@@ -2409,7 +2523,7 @@ workday_boards:
     tier: 2
     metros: ["Boston", "NYC"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; endpoint is live but the board has zero postings"
 
   - company: "Moog"
     ats: workday
@@ -2417,8 +2531,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 436
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Morgan Stanley"
     ats: workday
@@ -2426,8 +2541,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["NYC"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1389
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Motorola Solutions"
     ats: workday
@@ -2435,8 +2551,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Chicago"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 901
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Motorola Solutions"
     ats: workday
@@ -2445,7 +2562,7 @@ workday_boards:
     tier: 2
     metros: ["Chicago"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Nasdaq"
     ats: workday
@@ -2453,8 +2570,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 182
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "National Interstate Insurance"
     ats: workday
@@ -2462,8 +2580,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 150
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "NCR Voyix"
     ats: workday
@@ -2471,8 +2590,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 113
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Northrop Grumman"
     ats: workday
@@ -2480,8 +2600,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 3679
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "NXP"
     ats: workday
@@ -2489,8 +2610,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 783
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Palo Alto Networks"
     ats: workday
@@ -2498,8 +2620,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1434
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Parsons"
     ats: workday
@@ -2507,8 +2630,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1974
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "PayPal"
     ats: workday
@@ -2516,8 +2640,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 112
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Penn State University"
     ats: workday
@@ -2525,8 +2650,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2652
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Pfizer"
     ats: workday
@@ -2534,8 +2660,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 592
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "PNC Financial Services"
     ats: workday
@@ -2543,8 +2670,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 2000
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Q2"
     ats: workday
@@ -2552,8 +2680,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 45
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Qorvo"
     ats: workday
@@ -2562,7 +2691,7 @@ workday_boards:
     tier: 2
     metros: ["RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Radiance Technologies"
     ats: workday
@@ -2570,8 +2699,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Huntsville"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 60
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Raymond James Financial"
     ats: workday
@@ -2579,8 +2709,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 342
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Raytheon (RTX)"
     ats: workday
@@ -2589,7 +2720,7 @@ workday_boards:
     tier: 2
     metros: ["Boston", "Dallas", "Huntsville"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Red Hat"
     ats: workday
@@ -2597,8 +2728,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston", "RTP/Raleigh-Durham"]
-    valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    valid: true
+    postings_at_validation: 151
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Regal Rexnord"
     ats: workday
@@ -2606,8 +2738,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 530
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "RTX"
     ats: workday
@@ -2615,8 +2748,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Boston", "Dallas", "Huntsville"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 4440
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Schweitzer Engineering Laboratories"
     ats: workday
@@ -2624,8 +2758,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 253
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Siemens Energy"
     ats: workday
@@ -2634,7 +2769,7 @@ workday_boards:
     tier: 2
     metros: ["Charlotte"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; tenant blocks anonymous CxS access (HTTP 401) — no public endpoint"
 
   - company: "Sierra Nevada Corporation"
     ats: workday
@@ -2642,8 +2777,9 @@ workday_boards:
     track: both
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 306
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Silicon Labs"
     ats: workday
@@ -2651,8 +2787,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 64
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Sonos"
     ats: workday
@@ -2660,8 +2797,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Seattle"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 30
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Sony"
     ats: workday
@@ -2669,8 +2807,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 94
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "SS&C Technologies"
     ats: workday
@@ -2678,8 +2817,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 366
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "State Street"
     ats: workday
@@ -2687,8 +2827,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1288
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Symbotic"
     ats: workday
@@ -2696,8 +2837,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Austin", "Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 143
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "TD Synnex"
     ats: workday
@@ -2705,8 +2847,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 745
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Teradyne"
     ats: workday
@@ -2715,7 +2858,7 @@ workday_boards:
     tier: 2
     metros: ["Boston"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "The Federal Reserve System"
     ats: workday
@@ -2723,8 +2866,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 104
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "The Travelers Companies"
     ats: workday
@@ -2732,8 +2876,9 @@ workday_boards:
     track: software
     tier: 2
     metros: []
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 332
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Thermo Fisher Scientific"
     ats: workday
@@ -2741,8 +2886,9 @@ workday_boards:
     track: hardware
     tier: 2
     metros: ["Austin"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 3221
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Vanguard"
     ats: workday
@@ -2750,8 +2896,9 @@ workday_boards:
     track: both
     tier: 2
     metros: ["Charlotte"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 487
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Verizon"
     ats: workday
@@ -2759,8 +2906,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Dallas"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1205
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Vertex Pharmaceuticals"
     ats: workday
@@ -2768,8 +2916,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Boston"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 225
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Visa"
     ats: workday
@@ -2777,8 +2926,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Bay Area"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 742
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Wells Fargo"
     ats: workday
@@ -2786,8 +2936,9 @@ workday_boards:
     track: software
     tier: 2
     metros: ["Charlotte"]
-    valid: false
-    note: "workday fetcher is stubbed (sources/workday.py); tenant|shard|site mined from source repos"
+    valid: true
+    postings_at_validation: 1838
+    note: "probed live 2026-08-18; CxS endpoint answered"
 
   - company: "Wolfspeed"
     ats: workday
@@ -2796,7 +2947,7 @@ workday_boards:
     tier: 2
     metros: ["RTP/Raleigh-Durham"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"
 
   - company: "Zebra Technologies"
     ats: workday
@@ -2805,4 +2956,4 @@ workday_boards:
     tier: 2
     metros: ["Chicago"]
     valid: false
-    note: "workday fetcher is stubbed; tenant|shard|site hand-added from PLAN.md tiers"
+    note: "probed live 2026-08-18; unknown tenant (HTTP 422 from every shard) — likely not on Workday"

@@ -1,0 +1,39 @@
+{
+ "jobPostingInfo": {
+  "id": "3f8e2cb5bf0f10064a99686db1780000",
+  "title": "Senior AI Security Researcher",
+  "jobDescription": "<p>NVIDIA is looking for a Senior AI Security Researcher to help define how frontier AI systems, agentic applications, and AI-enabled security automation are tested, attacked, defended, and safely deployed. You will build new methods, tools, evaluations, and proofs of concept that help NVIDIA understand and reduce security risk across AI models, AI platforms, autonomous agents, cloud services, developer tooling, and accelerated computing systems!</p><p></p><p>We are looking for a researcher who can move fluidly from open-ended research questions to application within working systems: someone who can discover novel failure modes, build rigorous evaluation harnesses, prototype adversarial and defensive techniques, and turn findings into practical mitigations for engineering teams. The right person may come from AI security, ML security, malware data science, cyber-defense research, adversarial ML, LLM security, offensive security, threat hunting, or applied security research at scale!</p><p></p><p><b>What You&#39;ll Be Doing:</b></p><ul><li><p>Develop and answer open-ended AI security research questions that helps NVIDIA understand, measure, and reduce risk in frontier models, agentic systems, AI platforms, and AI-enabled products.</p></li><li><p>Develop practical methods, prototypes, evaluations, or tools that reveal how AI systems can fail under adversarial conditions and how those risks can be mitigated.</p></li><li><p>Explore a range of AI security problems, such as LLM and",
+  "location": "US, NC, Durham",
+  "additionalLocations": [
+   "US, NC, Remote",
+   "US, TX, Remote",
+   "US, VA, Remote",
+   "US, WA, Remote",
+   "US, CA, Remote"
+  ],
+  "postedOn": "Posted Today",
+  "startDate": "2026-08-18",
+  "timeType": "Full time",
+  "jobReqId": "JR2017578",
+  "jobPostingId": "Senior-AI-Security-Researcher_JR2017578",
+  "jobPostingSiteId": "NVIDIAExternalCareerSite",
+  "country": {
+   "descriptor": "United States of America",
+   "id": "bc33aa3152ec42d4995f4791a106ed09"
+  },
+  "canApply": true,
+  "posted": true,
+  "includeResumeParsing": true,
+  "jobRequisitionLocation": {
+   "descriptor": "US, NC, Durham",
+   "country": {
+    "descriptor": "United States of America",
+    "id": "bc33aa3152ec42d4995f4791a106ed09",
+    "alpha2Code": "US"
+   }
+  },
+  "externalUrl": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-NC-Durham/Senior-AI-Security-Researcher_JR2017578",
+  "questionnaireId": "028095df097b1001ac9358c586600000"
+ },
+ "userAuthenticated": false
+}

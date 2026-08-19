@@ -237,6 +237,21 @@ OBTAINABLE_CLEARANCE_JDS = [
     "Applicants must be eligible to obtain a DoD Secret clearance.",
     "US citizenship required; clearance will be sponsored.",
     "Candidates must be willing to obtain and maintain a security clearance.",
+    # 2026-08-18: the phrasing the defense tier ACTUALLY uses. It names no
+    # ability/eligibility word, so it used to fall through to the active-
+    # clearance rule, which matched the "maintain ... clearance" half and
+    # rejected the posting. Measured while enabling the Workday source: this
+    # alone dropped 23 of 23 Draper postings that had already cleared the title
+    # and location gates -- including "Mixed Signal Electronic Design Engineer",
+    # which this very file lists as a MUST-KEEP acceptance fixture below.
+    # Same boilerplate at Northrop Grumman, Leidos and RTX, i.e. exactly the
+    # employers where PLAN.md 4 says clearance ELIGIBILITY is the owner's
+    # differentiator. The bug was silently subtracting his strongest advantage.
+    "Applicants selected for this position will be required to obtain and "
+    "maintain a government security clearance.",
+    "Selected applicants will be required to obtain and maintain a US "
+    "government security clearance.",
+    "Must be able to obtain and maintain a secret government security clearance.",
 ]
 
 
@@ -252,6 +267,32 @@ def test_obtainable_clearance_kept_and_flagged(jd):
     r = check_description(jd)
     assert r.passed, jd
     assert r.clearance_advantage, f"should be flagged as an advantage: {jd}"
+
+
+def test_required_to_obtain_is_an_advantage_not_a_disqualifier():
+    """Regression for the 2026-08-18 Draper finding — see the fixture list."""
+    jd = (
+        "Applicants selected for this position will be required to obtain and "
+        "maintain a government security clearance."
+    )
+    r = check_description(jd)
+    assert r.passed
+    assert r.clearance_advantage
+
+
+@pytest.mark.parametrize(
+    "jd",
+    [
+        "Must hold an active Top Secret clearance at time of application.",
+        "This position requires a current, active Secret clearance.",
+        "Candidates must maintain an existing TS/SCI clearance.",
+    ],
+)
+def test_widening_did_not_start_accepting_cleared_only_reqs(jd):
+    """The other half of the 2026-08-18 change: 'required to obtain' was added
+    to the obtainable pattern, and that must NOT leak into reqs that demand a
+    clearance the owner does not have."""
+    assert not check_description(jd).passed
 
 
 def test_mixed_clearance_language_keeps_the_job():
@@ -302,3 +343,33 @@ def test_ms_or_bs_kept():
 
 def test_empty_description_is_not_a_rejection():
     assert check_description("").passed
+
+
+# --- truncated aggregator titles (regression: 2026-08-18 live run) ---------
+
+def test_truncated_title_is_recovered_from_the_apply_url():
+    """The repo tables cut titles at a fixed width. Hydration repairs this for
+    the four ATSes we can fetch, but jobs.apple.com lands as `ats: other` and
+    shipped 'Automation and Design Test Engineer,' — visibly chopped."""
+    from sources.github_repos import _recover_tail
+    url = ("https://jobs.apple.com/en-us/details/200651667/"
+           "automation-and-design-test-engineer-siri")
+    assert _recover_tail("Automation and Design Test Engineer", url) == "Siri"
+
+
+def test_tail_recovery_never_guesses():
+    from sources.github_repos import _recover_tail
+    url = ("https://jobs.apple.com/en-us/details/200651667/"
+           "automation-and-design-test-engineer-siri")
+    # Slug does not extend the title we parsed -> refuse to invent one.
+    assert _recover_tail("Data Scientist", url) == ""
+    # Opaque slug (Workday-style req ids) -> nothing to recover.
+    assert _recover_tail("Software Engineer", "https://x.com/job/R-12345") == ""
+
+
+def test_dangling_punctuation_is_stripped():
+    from sources.github_repos import _DANGLING
+    assert _DANGLING.sub("", "Automation and Design Test Engineer,") == \
+        "Automation and Design Test Engineer"
+    assert _DANGLING.sub("", "Software Engineer -") == "Software Engineer"
+    assert _DANGLING.sub("", "Hardware Engineer") == "Hardware Engineer"

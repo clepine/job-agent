@@ -1,0 +1,47 @@
+== SOFTWARE ==
+  ! 1 Tier 1 software role(s) were held back for scoring below the fit floor of 50 (best was 40) — better-matched Tier 2 roles took those slots instead.
+  ! Only 0 Tier 1 software matches available today — backfilled 2 from Tier 2 rather than padding the list.
+  * State Street - AI Engineer – GenAI & Agentic Systems
+    Quincy Massachusetts | posted 6d ago | fit 65/100
+    Strong LangChain/LiteLLM/Pydantic GenAI pipeline experience directly matches agentic systems work.
+    https://statestreet.wd1.myworkdayjobs.com/Global/job/Quincy-Massachusetts/AI-Engineer---GenAI---Agentic-Systems--Officer-_R-792531
+  * Morgan Stanley - Agentic AI Engineer
+    New York, New York, Un | posted 4d ago | fit 60/100
+    LangChain/LiteLLM agentic pipeline experience aligns well with this AI engineer role.
+    https://ms.wd5.myworkdayjobs.com/External/job/New-York-New-York-United-States-of-America/Agentic-AI-Engineer_PT-JR041931-1
+  * Ramp - Software Engineer, Forward Deployed AI
+    New York, NY (HQ); Remote | posted 21d ago | fit 60/100
+    LLM pipeline and LangChain experience relevant, but forward-deployed customer-facing role is a stretch.
+    https://jobs.ashbyhq.com/ramp/b614563f-3ce6-4dca-b5ba-0e5a6c8bda27
+  * Mercor - Software Engineer, Frontier Data Products
+    San Francisco or NYC | posted 11d ago | fit 55/100
+    LLM/data pipeline experience is relevant, but role focus on frontier data products is a stretch.
+    https://jobs.ashbyhq.com/mercor/ae344099-3fde-4027-bfde-f953db8b4728
+  * AbbVie - Agentic AI Security Engineer
+    North Chicago, IL | posted today | fit 45/100
+    AI pipeline experience with PII guardrails is relevant, but lacks dedicated security engineering background.
+    https://jobs.smartrecruiters.com/AbbVie/3743990014029467
+
+== HARDWARE ==
+  ! 6 Tier 1 hardware role(s) were held back for scoring below the fit floor of 50 (best was 30) — better-matched Tier 2 roles took those slots instead.
+  ! Only 0 Tier 1 hardware matches available today — backfilled 2 from Tier 2 rather than padding the list.
+  * Draper - Embedded Quality & Fielded Systems In
+    Cambridge, MA | posted 7d ago | fit 50/100
+    Fielded systems and quality work loosely matches embedded background, but role focus and clearance-lite fit unclear.
+    https://draper.wd5.myworkdayjobs.com/Draper_Careers/job/Cambridge-MA/Embedded-Quality---Fielded-Systems-Intern_JR002718
+  * Lumafield - Hardware Systems Engineer
+    Boston, MA | posted 77d ago | fit 45/100
+    Hardware systems engineering touches PCB/embedded skills but likely broader mechanical/systems scope than candidate's focus.
+    https://jobs.lever.co/lumafield/309cb9df-0b93-4fc6-a495-e64264dc8eea
+  * AbbVie - Manufacturing Software Controls Engineer
+    North Chicago, IL | posted today | fit 35/100
+    Manufacturing controls software is tangential; some embedded/automation overlap but not core focus.
+    https://jobs.smartrecruiters.com/AbbVie/3743990013481356
+  * Shield AI - Power Electronics - Thermal Engineer I (R4842)
+    Dallas, Texas; San Diego, California; Boston, MA | posted 124d ago | fit 30/100
+    Power electronics/thermal engineering is a mismatch despite clearance advantage; no thermal or power electronics experience shown.
+    https://jobs.lever.co/shieldai/f6bbec19-f1c6-44ce-9af5-132b25b6e83a
+  * Draper - Mixed Signal Electronic Design Engineer
+    Cambridge, MA | posted 4d ago | fit 20/100
+    Mixed-signal design role misaligns with candidate's digital/embedded strength and lacks analog design depth.
+    https://draper.wd5.myworkdayjobs.com/Draper_Careers/job/Cambridge-MA/Mixed-Signal-Electronic-Design-Engineer_JR002804

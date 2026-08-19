@@ -496,3 +496,30 @@ def test_state_load_does_not_clobber_local_rows(tmp_path):
         dbm.upsert(conn, [fresh])
         state_mod.load(conn, ledger)
         assert dbm.get(conn, fresh.id).description == "freshly fetched body"
+
+
+# --- tier-1 fit floor (regression: 2026-08-18 live run) --------------------
+
+def test_low_scoring_tier1_does_not_displace_a_better_tier2(cfg):
+    """The live run on 2026-08-18 sent a Waymo ML ASIC role scoring 30 — whose
+    own rationale said the owner lacks the tapeout experience — while a Draper
+    role scoring 50 sat benched. A Tier-1 slot is a preference, not a mandate."""
+    weak_t1 = _scored("Waymo", 1, 30)
+    strong_t2 = _scored("Draper", 2, 50)
+    sel = pick_track([weak_t1, strong_t2], cfg, "hardware")
+    companies = [j.company for j in sel.jobs]
+    assert "Draper" in companies
+    assert companies[0] == "Draper"
+
+
+def test_tier1_still_wins_its_slot_when_it_clears_the_floor(cfg):
+    good_t1 = _scored("Apple", 1, 75)
+    t2s = [_scored(f"T2-{i}", 2, 70 - i) for i in range(5)]
+    sel = pick_track([good_t1] + t2s, cfg, "software")
+    assert "Apple" in [j.company for j in sel.jobs]
+
+
+def test_benched_tier1_is_explained_not_silently_dropped(cfg):
+    sel = pick_track([_scored("Waymo", 1, 30)] + [_scored(f"T2-{i}", 2, 60) for i in range(5)],
+                     cfg, "hardware")
+    assert any("fit floor" in n for n in sel.notes)

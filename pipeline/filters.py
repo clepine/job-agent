@@ -187,9 +187,26 @@ _ACTIVE_CLEARANCE = re.compile(
     re.I,
 )
 # "must be able to obtain" is an ADVANTAGE for a clearance-eligible US citizen.
+#
+# The second alternative below covers the phrasing the defense tier actually
+# uses: "Applicants selected for this position will be REQUIRED TO OBTAIN and
+# maintain a government security clearance". That describes a clearance the
+# employer sponsors after hire, but it names no ability/eligibility word, so it
+# used to fall through to _ACTIVE_CLEARANCE, which matched the "maintain ...
+# clearance" half and rejected the posting.
+#
+# Measured 2026-08-18 while enabling the Workday source: this dropped 23 of 23
+# Draper postings that had already cleared the title and location gates,
+# including "Mixed Signal Electronic Design Engineer", which tests/test_filters
+# lists as a MUST-KEEP acceptance fixture. It is the standard boilerplate at
+# Draper, Northrop Grumman, Leidos and RTX — precisely the employers where
+# PLAN.md §4 says clearance eligibility is the owner's differentiator, so the
+# bug was silently subtracting his strongest advantage.
 _OBTAINABLE_CLEARANCE = re.compile(
     r"(?:able|ability|eligib\w*|willing|qualify)\s*(?:to\s+)?(?:obtain|acquire|"
     r"receive|be granted|get)[^.\n]{0,60}?clearance"
+    r"|(?:required|must|need(?:s|ed)?|expected)\s+to\s+(?:obtain|acquire|get)"
+    r"[^.\n]{0,80}?clearance"
     r"|clearance[^.\n]{0,60}?(?:can|may|will) be (?:obtained|sponsored|granted)"
     r"|(?:sponsor|sponsorship)[^.\n]{0,40}?clearance"
     r"|eligible (?:for|to obtain)[^.\n]{0,40}?clearance",

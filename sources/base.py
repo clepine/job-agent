@@ -50,6 +50,33 @@ def get_json(client: httpx.Client, url: str, retries: int = 2) -> Any:
     raise BoardError(f"{url}: {last}")
 
 
+def post_json(
+    client: httpx.Client, url: str, payload: dict, retries: int = 2
+) -> Any:
+    """POST a JSON body and return the decoded response.
+
+    Workday's CxS endpoint is the only source that needs POST. Its failure modes
+    are deterministic rather than transient — a wrong tenant/site returns 422,
+    an over-large `limit` returns 400 — so a 4xx is raised immediately and never
+    retried. Only 5xx and transport errors are worth a second attempt.
+    """
+    last: Optional[Exception] = None
+    for attempt in range(retries + 1):
+        try:
+            resp = client.post(url, json=payload)
+            if 400 <= resp.status_code < 500:
+                raise BoardError(f"{resp.status_code} {url}")
+            resp.raise_for_status()
+            return resp.json()
+        except BoardError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - fail soft by design
+            last = exc
+            if attempt == retries:
+                break
+    raise BoardError(f"{url}: {last}")
+
+
 def fetch_many(
     tasks: Iterable[tuple[str, Callable[[], list]]],
     max_workers: int = 8,

@@ -12,22 +12,31 @@ from __future__ import annotations
 
 import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from typing import Iterable
 from urllib.parse import urlsplit
 
 import httpx
 
 from pipeline.models import Job
-from . import smartrecruiters
+from . import smartrecruiters, workday
 from .base import BoardError, get_json
 
 GH_JOB = "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{job_id}"
 LEVER_JOB = "https://api.lever.co/v0/postings/{slug}/{job_id}"
 ASHBY_BOARD = "https://api.ashbyhq.com/posting-api/job-board/{slug}"
+WD_JOB = "https://{tenant}.{shard}.myworkdayjobs.com/wday/cxs/{tenant}/{site}{path}"
 
 _GH = re.compile(r"greenhouse\.io/(?P<slug>[^/]+)/jobs/(?P<id>\d+)")
 _LEVER = re.compile(r"lever\.co/(?P<slug>[^/]+)/(?P<id>[0-9a-f-]{8,})")
 _ASHBY = re.compile(r"ashbyhq\.com/(?P<slug>[^/]+)/(?P<id>[0-9a-f-]{8,})")
+# Both our own fetched URLs and the aggregators' apply links. Some tenants
+# insert a locale segment ("/en-US/PfizerCareers/job/..."), which is not part of
+# the CxS path and must be dropped.
+_WORKDAY = re.compile(
+    r"https?://(?P<tenant>[^./]+)\.(?P<shard>wd\d+)\.myworkdayjobs\.com/"
+    r"(?:[a-z]{2}-[A-Z]{2}/)?(?P<site>[^/]+)(?P<path>/job/.+)$"
+)
 
 
 def _hydrate_greenhouse(client: httpx.Client, job: Job) -> bool:
@@ -80,11 +89,57 @@ def _hydrate_ashby(client: httpx.Client, job: Job) -> bool:
     return False
 
 
+def _hydrate_workday(client: httpx.Client, job: Job) -> bool:
+    """One GET against the CxS detail endpoint.
+
+    This also covers the ~470 Workday rows the aggregator READMEs carry, which
+    were previously unhydratable — so a truncated Workday title now gets its
+    real text back and is re-filtered like every other source.
+
+    Two fields here beat what the list response can offer: `startDate` is an
+    absolute ISO date rather than "Posted 3 Days Ago", and `additionalLocations`
+    reveals the other sites behind a "6 Locations" placeholder.
+    """
+    m = _WORKDAY.match(job.url.split("?", 1)[0])
+    if not m:
+        return False
+    data = get_json(
+        client,
+        WD_JOB.format(
+            tenant=m["tenant"], shard=m["shard"], site=m["site"], path=m["path"]
+        ),
+        retries=1,
+    )
+    info = (data or {}).get("jobPostingInfo") or {}
+    job.description = info.get("jobDescription") or ""
+    if info.get("title"):
+        job.title = info["title"]
+        job.title_truncated = False
+
+    places = [info.get("location") or ""] + list(info.get("additionalLocations") or [])
+    normalized = [workday.normalize_location(p) for p in places if p]
+    if normalized:
+        # Semicolons because pipeline/geo.py splits multi-site strings on them
+        # and takes the best metro class across the sites.
+        job.location = "; ".join(dict.fromkeys(normalized))
+
+    start = info.get("startDate")
+    if start:
+        try:
+            job.posted_at = datetime.fromisoformat(str(start)).replace(
+                tzinfo=timezone.utc
+            )
+        except ValueError:
+            pass
+    return bool(job.description)
+
+
 _HANDLERS = {
     "greenhouse": _hydrate_greenhouse,
     "lever": _hydrate_lever,
     "ashby": _hydrate_ashby,
     "smartrecruiters": lambda c, j: smartrecruiters.hydrate(c, j),
+    "workday": _hydrate_workday,
 }
 
 

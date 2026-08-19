@@ -70,6 +70,30 @@ python run.py --skip-repos        # curated ATS boards only
 python run.py --no-mark-shown     # send, but let the same jobs reappear tomorrow
 ```
 
+### Bookkeeping
+
+```bash
+# Record that you applied. Free, instant — it does NOT run the pipeline.
+# An applied job is never shown again, and the daily summary counts them.
+python run.py --applied 6f2a9c...
+python run.py --list-applied
+```
+
+### Re-scoring one posting
+
+Scores are computed once and cached, so a score the model got wrong stays wrong
+until the resume changes. This is the escape hatch:
+
+```bash
+python -m pipeline.score --rescore 6f2a9c...            # budget-gated, usage-logged
+python -m pipeline.score --rescore 6f2a9c... --dry-run  # no API call, spends nothing
+```
+
+It re-fetches the posting body first — the committed ledger deliberately does
+not persist descriptions, so an old job arrives with an empty one and would
+otherwise be re-scored on its title alone.
+
+
 ### State
 
 Two files, deliberately split:
@@ -77,7 +101,7 @@ Two files, deliberately split:
 | File | Role | Committed? |
 |---|---|---|
 | `state.db` | local SQLite working store | **no** — gitignored |
-| `state/seen_jobs.json` | the real ledger: sorted, one object per job | **yes** |
+| `state/seen_jobs.json` | the real ledger: sorted, one object per job, including `applied_at` | **yes** |
 
 SQLite is rewritten in full every run and delta-compresses poorly, so
 committing it would add a fresh binary copy to history ~250 times a year to
@@ -125,7 +149,7 @@ fetch ─→ normalize ─→ dedupe ─→ hard-filter ─→ hydrate ─→ re
 
 | Stage | Module | Cost |
 |---|---|---|
-| Fetch 160 public ATS boards + 2 aggregator READMEs | `sources/`, `pipeline/fetch.py` | free HTTP |
+| Fetch 290 public ATS boards (160 GH/Lever/Ashby/SR + 130 Workday) + 2 aggregator READMEs | `sources/`, `pipeline/fetch.py` | free HTTP |
 | Canonical-URL hash + fuzzy `(company, title, location)` dedupe | `pipeline/models.py` | free |
 | Hard filters: seniority, discipline, level, location, staleness, description | `pipeline/filters.py` | free |
 | Fetch descriptions for survivors only | `sources/hydrate.py` | free HTTP |
@@ -141,6 +165,34 @@ resume does not change between days, so it is scored the first time it survives
 the filters and the result is persisted. The daily pick reads scores out of
 SQLite and calls nothing. A steady-state run scores only the ~10-15 postings
 that are genuinely new.
+
+### Workday
+
+Workday is half the board list and behaves unlike the other four ATSes. The
+contract below was verified empirically, not from documentation — the full
+write-up with the measurements is the module docstring in `sources/workday.py`.
+
+| | |
+|---|---|
+| Method | **POST** to `/wday/cxs/{tenant}/{site}/jobs`, body `{appliedFacets, limit, offset, searchText}` |
+| Page size | **Hard-capped at 20.** `limit: 21` returns HTTP 400 |
+| `total` | Only meaningful on the **first** page — a deep offset reports `total: 0` while still returning postings, so pagination ends on a short page |
+| Sort | **Strictly newest-first**, which is what makes this affordable |
+| Locations | Written country-first (`US, NC, Durham`) and in a different shape per tenant; multi-site postings say `"6 Locations"` instead of a place |
+| Descriptions | Not in the list response — one GET per posting, paid only for filter survivors |
+| Auth | None. No session cookie is needed on any tenant that answers at all |
+
+The newest-first sort is load-bearing. With `limits.max_posting_age_days: 7`
+the fetcher stops as soon as one whole page is older than the cutoff, so RTX's
+4,441-posting board costs ~10 requests a morning instead of 223. Adding 130
+Workday boards moved a full run from ~2m40s to ~2m35s — inside the noise.
+
+The location handling is the part most likely to rot. `pipeline/geo.py` matches
+a city only in the segment *before* the first comma, so Workday's native format
+classifies every US posting as "none" and the source silently returns nothing.
+`workday.expand_location()` appends `City, ST` fragments for `geo.py` to
+consider; it is **additive by construction** — the original string is always
+kept, so it can turn a "none" into a match but never the reverse.
 
 **Scores expire when the resume changes.** Each score is stamped with a
 fingerprint of the resume it was computed against (`pipeline/fingerprint.py`),
@@ -238,10 +290,10 @@ term the email reports as "asked for" is a literal substring of the posting.
 ```
 run.py                      orchestrator
 config.yaml                 model, budget, limits, geography, paths
-companies.yaml              308 boards: 160 live-validated + 148 stubbed Workday
+companies.yaml              308 boards: 160 + 148 Workday (130 live-validated)
 sources/
   greenhouse.py lever.py ashby.py smartrecruiters.py    public JSON board APIs
-  workday.py                                            DELIBERATE STUB — see file
+  workday.py                                            CxS POST API + pagination
   github_repos.py                                       aggregator README tables
   hydrate.py                                            descriptions for survivors only
 pipeline/
@@ -270,8 +322,16 @@ out/YYYY-MM-DD/                     committed each run
 
 Two keys. `boards:` holds 160 entries that were **probed live** and returned at
 least one posting (`postings_at_validation` records how many). `workday_boards:`
-holds 148 entries with real mined `tenant|shard|site` slugs, marked
-`valid: false` because the Workday fetcher is a stub.
+holds 148 entries keyed by `tenant|shard|site`; **130 were probed live and
+answered**, and the 18 that did not carry a `note` explaining why (unknown
+tenant / wrong site segment / anonymous access blocked).
+
+Re-probe every Workday board and rewrite the flags in place:
+
+```bash
+python tools/probe_workday.py           # report only
+python tools/probe_workday.py --write   # update companies.yaml
+```
 
 To add a company, add an entry under `boards:` and confirm it answers:
 
@@ -316,7 +376,7 @@ never ran" are never confusable. GitHub also disables scheduled workflows after
 python -m pytest tests/ -q
 ```
 
-196 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
+295 tests. **No test makes a live API call** — the session-scoped `_no_api_key`
 fixture removes `ANTHROPIC_API_KEY` from the environment for the whole run, so
 a code path that accidentally constructs a real client fails loudly instead of
 silently spending. Every LLM stage is exercised against `StubAnthropic`.
@@ -348,18 +408,25 @@ Libraries" on a document that goes to employers.
 
 ## Known limitations
 
-* **Workday is stubbed.** ~470 of the 1,056 aggregator rows are Workday, and
-  most of the PLAN.md §1 Tier-2 hardware names live there (ADI, Qorvo,
-  Wolfspeed, Teradyne, Infineon, Raytheon, BAE, HPE, Lenovo). It needs POST,
-  per-tenant shard + site paths, and a second request per description. The
-  slugs are already mined and stored in the shape the fetcher expects.
+* **Workday is implemented** (`sources/workday.py`), and 130 of the 148
+  mined boards answer. But the Tier-2 hardware names it was meant to reach are
+  only partly there: **Qorvo, Wolfspeed, Teradyne, Infineon and BAE are not on
+  Workday at all** — their `tenant|shard|site` triples were hand-guessed, and
+  every shard returns HTTP 422. Reaching them needs a SuccessFactors /
+  Phenom fetcher, not a Workday one. Raytheon *is* covered, under `RTX`.
+  Apple, Lenovo and Siemens Energy return HTTP 401: their tenants exist but
+  block anonymous access. See the header of `companies.yaml` for the
+  per-company verdicts.
+* **Analog Devices answers but contributes nothing today.** Its board is live
+  (1,025 postings) and its locations parse correctly; it simply has no
+  new-grad-titled engineering role in a target metro inside the 7-day window.
+  That is a real result, not a parsing failure — its US postings in the window
+  are senior, and its entry-level ones are in Cavite and Chon Buri.
 * **Gmail API / LinkedIn alert parsing is v2** and not built. Sending uses SMTP.
 * **Aggregator rows arrive truncated.** Titles and locations are cut with an
   ellipsis. Records are flagged `needs_hydration`, the real title is fetched
   from the apply URL where a free JSON endpoint exists (Greenhouse, Lever,
-  Ashby, SmartRecruiters), and they are then re-filtered. Workday-hosted rows
-  cannot be hydrated, so a truncated Workday title is filtered on what is
-  visible.
+  Ashby, SmartRecruiters, and now Workday), and they are then re-filtered.
 * **Posting ages from the aggregators are relative** ("20m", "3d") and are
   converted to absolute timestamps at fetch time. They are accurate as of the
   fetch, which is what the email claims.

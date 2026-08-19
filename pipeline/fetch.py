@@ -54,9 +54,9 @@ def load_companies(path: Optional[str] = None) -> list[dict]:
     with open(p, encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
     boards = list(data.get("boards") or [])
-    # Workday entries live in their own key and are skipped while the fetcher
-    # is a stub, but are loaded so `--include-workday` can exercise them once
-    # sources/workday.py is implemented.
+    # Workday entries live under their own key purely for readability — they
+    # are ~half the file and carry a different slug shape. They are otherwise
+    # ordinary boards and are gated by the same `valid` flag.
     for entry in data.get("workday_boards") or []:
         entry.setdefault("valid", False)
         boards.append(entry)
@@ -69,6 +69,17 @@ def fetch_boards(cfg: dict, companies: list[dict]) -> tuple[list[Job], FetchRepo
     tasks = []
     tier_by_slug: dict[tuple[str, str], int] = {}
 
+    fetch_cfg = cfg.get("fetch", {})
+    # Workday needs two numbers the other fetchers don't: how deep to page, and
+    # where to stop. Its endpoint caps a page at 20 postings but returns them
+    # newest-first, so handing it the staleness cutoff turns a 4,441-posting
+    # board from ~223 requests into a handful. See sources/workday.py.
+    workday_kwargs = {
+        "max_age_days": cfg.get("limits", {}).get("max_posting_age_days"),
+        "max_pages": int(fetch_cfg.get("workday_max_pages", workday.DEFAULT_MAX_PAGES)),
+        "retries": int(fetch_cfg.get("retries", 2)),
+    }
+
     for entry in companies:
         if not entry.get("valid"):
             continue
@@ -79,10 +90,16 @@ def fetch_boards(cfg: dict, companies: list[dict]) -> tuple[list[Job], FetchRepo
         company = entry["company"]
         slug = entry["slug"]
         track = entry.get("track", "software")
+        kwargs = workday_kwargs if ats == "workday" else {}
         tier_by_slug[(ats, slug)] = int(entry.get("tier", 2))
         label = f"{ats}:{slug}"
         tasks.append(
-            (label, lambda f=fn, c=company, s=slug, t=track: f(client, c, s, t))
+            (
+                label,
+                lambda f=fn, c=company, s=slug, t=track, k=kwargs: f(
+                    client, c, s, t, **k
+                ),
+            )
         )
 
     report.boards_attempted = len(tasks)

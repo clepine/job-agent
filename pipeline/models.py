@@ -130,6 +130,10 @@ class Job(BaseModel):
     source: str = ""
     track: Track = "software"
     shown_at: Optional[datetime] = None
+    # Set by `python run.py --applied <job-id>`. An applied job is never shown
+    # again: over months the real failure mode is not missing a role, it is
+    # re-applying to one already sent.
+    applied_at: Optional[datetime] = None
 
     # Scored once at ingest, then persisted and never recomputed.
     fit_score: Optional[int] = None
