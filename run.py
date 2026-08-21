@@ -19,7 +19,6 @@ import argparse
 import logging
 import sys
 from datetime import date, datetime, timezone
-from pathlib import Path
 
 from pipeline import (
     db,

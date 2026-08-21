@@ -215,3 +215,60 @@ def test_a_requirement_next_to_the_word_degree_is_still_a_requirement(body):
 ])
 def test_genuine_alternation_still_softens(body):
     assert filters.check_description(body).passed
+
+
+# --------------------------------------------------------------------------
+# 7. The resume line must not overstate what was measured.
+# --------------------------------------------------------------------------
+# Each case below was a real phrasing bug seen in a rendered email on
+# 2026-08-21: an exact 75%/75% tie reported as software leading "by a hair",
+# and "no keywords extracted" printed for a posting whose keywords had been
+# extracted perfectly well and simply matched neither resume.
+
+
+def test_an_exact_tie_is_not_reported_as_a_lead():
+    rec = resume_pick.recommend("Requirements: Python, Verilog", RESUME_SW, RESUME_HW)
+    assert rec.coverage_sw == rec.coverage_hw
+    assert "by a hair" not in rec.label()
+    assert "both cover" in rec.label()
+
+
+def test_a_near_tie_still_names_the_nose_ahead():
+    rec = resume_pick.recommend(
+        "Requirements: Python, Docker, Verilog, MSP430, KiCad", RESUME_SW, RESUME_HW
+    )
+    if rec.close and rec.coverage_sw != rec.coverage_hw:
+        assert "by a hair" in rec.label()
+
+
+def test_keywords_that_match_neither_resume_are_reported_as_such():
+    """Distinct from extracting none at all — the count is real and is shown."""
+    rec = resume_pick.recommend(
+        "Requirements: Kubernetes, Terraform", RESUME_SW, RESUME_HW
+    )
+    assert rec.terms == 2
+    assert "neither covers any of the 2 keywords" in rec.label()
+    assert "no keywords" not in rec.label()
+
+
+def test_a_posting_naming_nothing_trackable_says_that_instead():
+    rec = resume_pick.recommend(
+        "Requirements: teamwork and communication", RESUME_SW, RESUME_HW
+    )
+    assert rec.terms == 0
+    assert "names no keywords we track" in rec.label()
+
+
+def test_neither_no_signal_case_is_flagged_as_a_track_disagreement():
+    """No measurement is not evidence for the other resume."""
+    for jd in ("Requirements: Kubernetes, Terraform", "Requirements: teamwork"):
+        rec = resume_pick.recommend(jd, RESUME_SW, RESUME_HW)
+        assert not resume_pick.disagrees_with_track(rec, "software")
+        assert not resume_pick.disagrees_with_track(rec, "hardware")
+
+
+def test_the_recommendation_carries_the_diffs_it_was_computed_from():
+    """So the email can print keyword chips without a third diff."""
+    rec = resume_pick.recommend("Requirements: Verilog, Python", RESUME_SW, RESUME_HW)
+    assert rec.diff_for("software").matched == ["Python"]
+    assert rec.diff_for("hardware").matched == ["Verilog"]

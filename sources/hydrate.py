@@ -14,7 +14,6 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Iterable
-from urllib.parse import urlsplit
 
 import httpx
 

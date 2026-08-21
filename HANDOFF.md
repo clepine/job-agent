@@ -10,11 +10,11 @@ setup, operation, the pipeline walkthrough, and the full commands.
 
 ## Status as of 2026-08-21
 
-Working. **381 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
+Working. **399 tests pass** (`./venv/bin/python -m pytest tests/ -q`).
 
 Ledger on this branch: 770 postings, 40 scored, 10 shown, 0 applied. Live spend
 to date **$0.0757** of an original $5 balance, across one real run. Projected
-~$1-2/month at the current 20-scores-per-track cap.
+~$2/month at the 30-scores-per-track cap set on 2026-08-21.
 
 The unattended schedule works — `origin/main` carries `job-agent: run 2026-08-18`
 and `job-agent: run 2026-08-19` commits, and the owner received a real digest on
@@ -119,6 +119,8 @@ rather than an error.
 | `compress_jd` tests for `&lt;` as well as `<` | Its guard was `html_to_text(raw) if "<" in raw`, so escaped postings skipped normalization entirely and reached the section splitter as tag soup, matching no heading. This is why the unescape fix above was invisible until both landed. |
 | `compress_jd` drops everything before the first section heading | `dropping` starts False, so the "about us" preamble was kept in full and the `jd_max_chars` truncation then cut the posting off before it ever reached the qualifications. A SpaceX req compressed to 1,551 characters of "SpaceX was founded under the belief that..." — the model was scoring fit from the company blurb. Only applied when a keep-heading exists; a posting with no recognizable sections still uses the substance-scored fallback. |
 | ATS keyword diff uses **no LLM** | Set arithmetic over a skills vocabulary. Cheaper *and* more reliable — it cannot hallucinate a keyword the posting never contained. Postings yielding zero keywords fell from 14% of the pool to 10% once the three fixes above landed. |
+| Each posting is compressed and diffed **once** per render | The HTML part and the plain-text part render the same postings, and both used to compress the body and re-run the keyword diff themselves — a ten-posting email compressed twenty bodies and ran fifty diffs, all duplicates. `_build_cards()` computes each once and hands the result to both, and `Recommendation` carries the two diffs it was derived from so the keyword chips need no third. Beyond the waste, it removed the way the two halves of one email could disagree about what a posting asked for. |
+| The resume line never overstates the measurement | Three separate phrasings were wrong in a rendered email: an exact 75%/75% tie reported as software ahead "by a hair"; "no keywords extracted" printed for a posting whose keywords extracted fine and matched neither resume; and a 0-vs-0 dressed up as a verdict. A line the reader cannot trust on the easy cases is not worth reading on the hard ones. |
 
 ### Resume routing
 
@@ -136,6 +138,8 @@ rather than an error.
 | Score once, cache forever | Cost. A posting's fit does not change. Invalidated by `score_fingerprint()`, which covers both the resume *and* the scoring regime (prompt, model id, `jd_max_chars`) — a cached score is only comparable to a fresh one if both were produced the same way. The 2026-08-21 prompt change therefore invalidates the 40 existing scores, and that is correct; the cost is small and self-limiting because `db.unscored()` will not re-score anything past the backlog window, and most of those 40 are already outside it. |
 | Legacy scores are carried forward, not re-scored | `db.upgrade_score_fingerprints()` upgrades a row only when its stored hash equals the *current* resume-only fingerprint. The cost that matters is not the ~$0.08 — a run's scoring budget is capped, so a morning re-scoring old work is a morning not spent draining the backlog. |
 | State committed as sorted JSON, not SQLite | Binary SQLite delta-compresses poorly; committing it every run would bloat the repo. `state.db` is gitignored and local-only, and self-heals from the ledger on load. |
+| `budget.max_usd_per_run: 0.15` and `limits.max_new_scores_per_run: 30` move **together** | Raised from $0.10 / 20 on 2026-08-21 to buy capacity. They are coupled and nothing enforced it before `test_the_budget_ceiling_covers_a_full_scoring_run`: the ceiling aborts *before* the call that would breach it, so a cap that outgrows its budget does not fail loudly — it scores half the pool and the email quietly draws on a thinner backlog than it should. Costs are measured, not guessed: $0.0126 per call at `score_batch_size: 8`, so $0.00158 per posting, so ~$0.095 for a full 60-posting run — about 37% headroom. `max_jobs_to_prerank` went to 60 in the same edit because preranking 40 candidates down to 30 is barely a selection, and that stage is free. |
+| Scoring capacity is the binding constraint, not the fit floor | A posting cannot be sent until it is scored. Measured 2026-08-21, one fetch brought in 60 software and 50 hardware postings; at 20 per track the majority were never scored, and because `db.unscored()` orders freshest-first they could never catch up — the next morning's arrivals outrank them permanently. 30 covers a normal day's hardware inflow outright and most of software's. If the email is thin, check this before touching `min_fit`. |
 | Tailoring is **on demand**, not 10/day | He applies to ~3 jobs/week, not 50. |
 | BM25, not embeddings | Anthropic has no embeddings endpoint; embeddings would mean a second vendor and bill. |
 | Resume = structured YAML + fixed renderer | The model edits *data*, never layout. Formatting cannot drift, so ATS-safety is verified once on the masters rather than per document. |
@@ -171,6 +175,9 @@ rather than an error.
    filters. Both cuts are correct and they compound. If February comes up short,
    `limits.max_posting_age_days` is the first number to raise — not the fit
    floor, and not the entry-level gates.
+   Some postings are still never scored on a heavy day: 30 per track against
+   60 software arrivals. That is a money dial rather than a bug, and the two
+   settings that move it are in the State and cost table.
 7. **`companies.yaml` `metros` is decorative.** No code reads it, and Northrop
    Grumman's list is empty. It was nearly used to gate the wider age window
    per board, which would have kept exactly the wrong board narrow. Either fix

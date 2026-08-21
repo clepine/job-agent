@@ -15,7 +15,7 @@ import html
 import smtplib
 import ssl
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date
 from email.message import EmailMessage
 from pathlib import Path
 from typing import Optional, Sequence
@@ -60,15 +60,55 @@ def _tier_label(job: Job) -> str:
     return "Tier 1" if job.tier == 1 else "Tier 2"
 
 
-def _job_card(
-    job: Job, resume: dict, resume_sw: dict, resume_hw: dict, jd_max_chars: int
-) -> str:
-    jd = compress_jd(job.description, jd_max_chars)
-    diff = keywords.diff(jd, resume)
-    matched, missing = keywords.summarize(diff)
-    rec = resume_pick.recommend(jd, resume_sw, resume_hw)
+# Workday multi-site reqs enumerate every office they are open in. A Crowe
+# posting in the 2026-08-21 email arrived with THIRTY-SEVEN, which pushed the
+# age stamp and the fit score off the readable part of the line.
+_MAX_LOCATIONS = 3
 
-    meta_bits = [job.location or "location not stated", job.age_label(), _tier_label(job)]
+
+def _location_label(location: str) -> str:
+    parts = [p.strip() for p in (location or "").split(";") if p.strip()]
+    if not parts:
+        return "location not stated"
+    if len(parts) <= _MAX_LOCATIONS:
+        return "; ".join(parts)
+    return "; ".join(parts[:_MAX_LOCATIONS]) + f" +{len(parts) - _MAX_LOCATIONS} more"
+
+
+@dataclass
+class _Card:
+    """Everything derived from one posting, computed once.
+
+    The HTML part and the plain-text part render the same postings, and both
+    used to compress the JD and re-run the keyword diff themselves - so a
+    ten-posting email compressed twenty bodies and ran up to forty diffs, all of
+    them duplicates. Building this first and handing it to both renderers means
+    one compress and one pair of diffs per posting, and it removes the way the
+    two parts could disagree about what a posting asked for.
+    """
+
+    job: Job
+    jd: str
+    diff: keywords.KeywordDiff
+    rec: resume_pick.Recommendation
+
+
+def _build_cards(
+    jobs: Sequence[Job], track: str, resume_sw: dict, resume_hw: dict, jd_max_chars: int
+) -> list[_Card]:
+    cards = []
+    for job in jobs:
+        jd = compress_jd(job.description, jd_max_chars)
+        rec = resume_pick.recommend(jd, resume_sw, resume_hw)
+        cards.append(_Card(job=job, jd=jd, diff=rec.diff_for(track), rec=rec))
+    return cards
+
+
+def _job_card(card: _Card) -> str:
+    job, diff, rec = card.job, card.diff, card.rec
+    matched, missing = keywords.summarize(diff)
+
+    meta_bits = [_location_label(job.location), job.age_label(), _tier_label(job)]
     if job.metro:
         meta_bits.insert(1, job.metro)
     if job.clearance_advantage:
@@ -108,6 +148,17 @@ def _job_card(
     else:
         resume_html = f'<p style="{_RESUME}">{_e(rec.label())}</p>'
 
+    # Say so when the gates could not read the body. check_description passes an
+    # empty string unconditionally, so an unfetchable posting is the one case
+    # where "entry level" was never actually verified - and the reader is the
+    # only one who can check it.
+    if not job.description:
+        resume_html += (
+            f'<p style="{_RESUME_FLIP}">Job description could not be fetched, so the '
+            f'experience-level and clearance checks could not run on this one. '
+            f'Confirm it is open to new grads before you spend time on it.</p>'
+        )
+
     return f"""
     <div style="{_CARD}">
       <p style="{_TITLE}">{_e(job.company)} &mdash; {_e(job.title)}</p>
@@ -121,43 +172,43 @@ def _job_card(
     </div>"""
 
 
-def _track_section(
-    title: str, sel: Selection, resume: dict, resume_sw: dict, resume_hw: dict,
-    jd_max_chars: int,
-) -> str:
+def _track_section(title: str, sel: Selection, cards: Sequence[_Card]) -> str:
     parts = [f'<h2 style="{_H2}">{_e(title)}</h2>']
     for note in sel.notes:
         parts.append(f'<div style="{_NOTE}">{_e(note)}</div>')
-    if not sel.jobs:
+    if not cards:
         parts.append('<p style="color:#666;font-size:14px;">No matches cleared the filters today.</p>')
-    for job in sel.jobs:
-        parts.append(_job_card(job, resume, resume_sw, resume_hw, jd_max_chars))
+    parts.extend(_job_card(card) for card in cards)
     return "".join(parts)
 
 
 def _plain_text(
     software: Selection,
     hardware: Selection,
-    resume_sw: Optional[dict] = None,
-    resume_hw: Optional[dict] = None,
-    jd_max_chars: int = 1600,
+    sw_cards: Sequence[_Card],
+    hw_cards: Sequence[_Card],
 ) -> str:
     lines: list[str] = []
-    for label, sel in (("SOFTWARE", software), ("HARDWARE", hardware)):
+    for label, sel, cards in (
+        ("SOFTWARE", software, sw_cards),
+        ("HARDWARE", hardware, hw_cards),
+    ):
         lines.append(f"== {label} ==")
         for note in sel.notes:
             lines.append(f"  ! {note}")
-        for job in sel.jobs:
+        for card in cards:
+            job = card.job
             lines.append(f"  * {job.company} - {job.title}")
-            lines.append(f"    {job.location} | {job.age_label()} | fit {job.fit_score}/100")
-            if resume_sw is not None and resume_hw is not None:
-                rec = resume_pick.recommend(
-                    compress_jd(job.description, jd_max_chars), resume_sw, resume_hw
-                )
-                lines.append(f"    {rec.label()}")
+            lines.append(
+                f"    {_location_label(job.location)} | {job.age_label()}"
+                f" | fit {job.fit_score}/100"
+            )
+            lines.append(f"    {card.rec.label()}")
+            if not job.description:
+                lines.append("    ! JD unavailable - experience level not verified")
             lines.append(f"    {job.fit_rationale}")
             lines.append(f"    {job.url}")
-        if not sel.jobs:
+        if not cards:
             lines.append("  (nothing today)")
         lines.append("")
     return "\n".join(lines)
@@ -177,6 +228,10 @@ def render_email(
     today = date.today().isoformat()
     n_sw, n_hw = len(software.jobs), len(hardware.jobs)
 
+    # Built once, rendered twice.
+    sw_cards = _build_cards(software.jobs, "software", resume_sw, resume_hw, jd_max_chars)
+    hw_cards = _build_cards(hardware.jobs, "hardware", resume_sw, resume_hw, jd_max_chars)
+
     subject = f"{cfg['email'].get('subject_prefix','Daily Job Matches')} — {n_sw} software, {n_hw} hardware ({today})"
 
     notes_html = "".join(f'<div style="{_NOTE}">{_e(n)}</div>' for n in (run_notes or []))
@@ -185,12 +240,13 @@ def render_email(
       <p style="font-size:22px;font-weight:700;margin:0 0 2px 0;">Daily Job Matches</p>
       <p style="font-size:13px;color:#666;margin:0 0 16px 0;">
         {_e(today)} &middot; {n_sw} software &middot; {n_hw} hardware &middot;
+        nothing older than {_e(cfg["limits"].get("max_backlog_age_days", 7))} days &middot;
         every posting is new to you and age-stamped with its true posting date
       </p>
       {f'<p style="font-size:12px;color:#777;margin:0 0 14px 0;">You have applied to <b>{applied_total}</b> role(s) so far. Record a new one with <code>python run.py --applied &lt;job-id&gt;</code> &mdash; applied roles are never shown again.</p>' if applied_total else ''}
       {notes_html}
-      {_track_section("Software", software, resume_sw, resume_sw, resume_hw, jd_max_chars)}
-      {_track_section("Hardware", hardware, resume_hw, resume_sw, resume_hw, jd_max_chars)}
+      {_track_section("Software", software, sw_cards)}
+      {_track_section("Hardware", hardware, hw_cards)}
       <p style="font-size:11px;color:#999;margin-top:28px;border-top:1px solid #eee;padding-top:10px;">
         Keyword diffs are computed locally by set arithmetic over the posting text &mdash;
         every &ldquo;asked for&rdquo; term is literally present in the job description, never inferred.
@@ -201,7 +257,7 @@ def render_email(
     return RenderedEmail(
         subject=subject,
         html=body,
-        text=_plain_text(software, hardware, resume_sw, resume_hw, jd_max_chars),
+        text=_plain_text(software, hardware, sw_cards, hw_cards),
         job_ids=[j.id for j in software.jobs] + [j.id for j in hardware.jobs],
     )
 

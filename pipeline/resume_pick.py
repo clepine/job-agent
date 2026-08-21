@@ -17,7 +17,7 @@ with the keyword chips printed directly beneath it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from . import keywords
 
@@ -36,19 +36,46 @@ class Recommendation:
     matched_sw: int
     matched_hw: int
     terms: int
+    # The diffs this verdict was computed from, kept so callers do not run the
+    # same set arithmetic a second time. The email needs the track's diff for
+    # its keyword chips, and recomputing it there meant three diffs per posting
+    # per render - four once the plain-text part re-rendered the same card.
+    diff_sw: keywords.KeywordDiff = field(default_factory=keywords.KeywordDiff)
+    diff_hw: keywords.KeywordDiff = field(default_factory=keywords.KeywordDiff)
+
+    def diff_for(self, track: str) -> keywords.KeywordDiff:
+        """The diff against the resume that `track` actually sends."""
+        return self.diff_hw if track == "hardware" else self.diff_sw
 
     @property
     def margin(self) -> float:
         return abs(self.coverage_sw - self.coverage_hw)
 
     def label(self) -> str:
-        """One line for the email card."""
+        """One line for the email card.
+
+        Every branch here exists because the previous phrasing overstated what
+        was measured. "no keywords extracted" was printed when keywords HAD been
+        extracted and simply matched nothing, and an exact tie was reported as
+        one resume leading "by a hair". A line the reader cannot trust on the
+        easy cases is not worth reading on the hard ones.
+        """
         if not self.terms:
-            return "Resume: no keywords extracted - fall back to the track default"
+            return (
+                "Resume: this posting names no keywords we track - "
+                "fall back to the track default"
+            )
         sw = f"{self.coverage_sw:.0%}"
         hw = f"{self.coverage_hw:.0%}"
+        if not self.matched_sw and not self.matched_hw:
+            return (
+                f"Resume: neither covers any of the {self.terms} keywords this "
+                f"posting names - fall back to the track default"
+            )
         if self.close:
-            lead = "software" if self.coverage_sw >= self.coverage_hw else "hardware"
+            if self.coverage_sw == self.coverage_hw:
+                return f"Resume: either works - both cover {sw} of its keywords"
+            lead = "software" if self.coverage_sw > self.coverage_hw else "hardware"
             return (
                 f"Resume: either works - software {sw} vs hardware {hw} "
                 f"keyword coverage ({lead} by a hair)"
@@ -69,7 +96,9 @@ def recommend(compressed_jd: str, resume_sw: dict, resume_hw: dict) -> Recommend
     # measurement here, and "either works (software by a hair)" would dress up
     # a 0-vs-0 as a finding. Report no signal and let the track stand.
     if not terms or (not d_sw.matched and not d_hw.matched):
-        return Recommendation("software", cov_sw, cov_hw, True, 0, 0, 0)
+        return Recommendation(
+            "software", cov_sw, cov_hw, True, 0, 0, terms, diff_sw=d_sw, diff_hw=d_hw
+        )
     best = "software" if cov_sw >= cov_hw else "hardware"
     return Recommendation(
         best=best,
@@ -79,6 +108,8 @@ def recommend(compressed_jd: str, resume_sw: dict, resume_hw: dict) -> Recommend
         matched_sw=len(d_sw.matched),
         matched_hw=len(d_hw.matched),
         terms=terms,
+        diff_sw=d_sw,
+        diff_hw=d_hw,
     )
 
 
