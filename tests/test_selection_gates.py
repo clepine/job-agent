@@ -125,7 +125,7 @@ def test_a_posting_with_no_date_is_never_aged_out(cfg):
 
 def test_poor_matches_are_never_sent(cfg):
     good = _job(company="Good", fit_score=70, posted_at=_aged(2))
-    poor = _job(company="Waymo", fit_score=30, posted_at=_aged(2))
+    poor = _job(company="Waymo", fit_score=25, posted_at=_aged(2))
     keep, notes, _t1 = eligible([good, poor], cfg, "hardware")
     assert keep == [good]
     assert any("minimum fit" in n for n in notes)
@@ -143,8 +143,20 @@ def test_a_short_list_explains_itself_rather_than_padding(cfg):
 
 
 def test_the_floor_is_the_models_own_calibration(cfg):
-    """score.py's prompt calls 0-39 'poor match'. Keep the two in step."""
-    assert cfg["email"]["min_fit"] == 40
+    """The floor IS the model's bottom band, whatever that band currently is.
+
+    Pinned to 40 until 2026-08-21, when score.py grew a 30-39 "loose match -
+    adjacent skills, still worth a look as a new grad" band on the owner's note
+    that a posting "doesn't have to align exactly with my resume". The coupling
+    is the point and it survives: the email must never send a posting the
+    scorer's own prompt calls poor, so this test reads the prompt rather than
+    restating a number that can drift away from it.
+    """
+    from pipeline.score import SYSTEM_TEMPLATE
+
+    assert "0-29   poor match" in SYSTEM_TEMPLATE
+    assert "30-39  loose match" in SYSTEM_TEMPLATE
+    assert cfg["email"]["min_fit"] == 30
 
 
 # ---------------------------------------------------------------------------

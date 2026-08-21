@@ -357,6 +357,7 @@ def fetch(
     max_age_days: Optional[int] = None,
     max_pages: int = DEFAULT_MAX_PAGES,
     retries: int = 2,
+    transient_retries: int = 5,
     page_wave: int = DEFAULT_PAGE_WAVE,
 ) -> list[Job]:
     """Pull one Workday board, newest-first, stopping at the staleness cutoff.
@@ -396,6 +397,7 @@ def fetch(
                 "searchText": "",
             },
             retries=retries,
+            transient_retries=transient_retries,
         )
         return (data or {}).get("jobPostings") or []
 

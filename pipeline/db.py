@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, Iterator, Optional
 
@@ -200,7 +200,11 @@ def save_scores(conn: sqlite3.Connection, jobs: Iterable[Job], resume_hash: str)
 
 
 def unscored(
-    conn: sqlite3.Connection, track: str, limit: int, resume_hash: str
+    conn: sqlite3.Connection,
+    track: str,
+    limit: int,
+    resume_hash: str,
+    max_age_days: Optional[int] = None,
 ) -> list[Job]:
     """Jobs needing a score: never scored, OR scored against an older resume.
 
@@ -208,17 +212,53 @@ def unscored(
     best-known-score order — so if a resume edit invalidates more than one run's
     budget allows, the most promising jobs are re-scored first and the rest
     carry to later runs.
+
+    Within the never-scored group the order is FRESHEST FIRST. This is the whole
+    ballgame for a daily email and it used to be the last tiebreaker, behind
+    `metro_class = 'primary'`.
+
+    A posting cannot be sent until it has been scored, and scoring is capped at
+    limits.max_new_scores_per_run — 20 — against an arrival rate measured at 246
+    on 2026-08-21. Capacity is therefore an order of magnitude below inflow, so
+    what the email can draw on is not "recent postings", it is "whatever won the
+    scoring lottery", and primary-metro-first meant a two-week-old Boston req
+    outranked this morning's arrivals every single day. That is why the
+    2026-08-21 email led with postings 21, 22 and 24 days old: they were not
+    ranked above the fresh ones, they were the only fresh-ish ones ever scored.
+
+    `fit_score` sorts ahead of the date and is inert for the never-scored group
+    (it is NULL for all of them), so it only orders the re-score case, exactly
+    as before.
+
+    `max_age_days` stops the run paying to score postings that
+    limits.max_backlog_age_days would refuse to send anyway. Undated postings
+    are kept, matching filters.check_age: unknown age is not old age.
     """
+    where = [
+        "track = ?",
+        "shown_at IS NULL",
+        "applied_at IS NULL",
+        "(scored_at IS NULL OR resume_hash != ?)",
+    ]
+    params: list[object] = [track, resume_hash]
+    if max_age_days is not None:
+        where.append(
+            "(COALESCE(posted_at, first_seen_at) IS NULL"
+            " OR COALESCE(posted_at, first_seen_at) >= ?)"
+        )
+        cutoff = datetime.now(timezone.utc) - timedelta(days=int(max_age_days))
+        params.append(cutoff.isoformat())
+    params.append(limit)
+
     rows = conn.execute(
-        """SELECT * FROM jobs
-           WHERE track = ? AND shown_at IS NULL AND applied_at IS NULL
-             AND (scored_at IS NULL OR resume_hash != ?)
+        f"""SELECT * FROM jobs
+           WHERE {' AND '.join(where)}
            ORDER BY (scored_at IS NULL) DESC,
-                    (metro_class = 'primary') DESC,
                     COALESCE(fit_score, -1) DESC,
-                    COALESCE(posted_at, first_seen_at) DESC
+                    COALESCE(posted_at, first_seen_at) DESC,
+                    (metro_class = 'primary') DESC
            LIMIT ?""",
-        (track, resume_hash, limit),
+        params,
     ).fetchall()
     return [_row_to_job(r) for r in rows]
 

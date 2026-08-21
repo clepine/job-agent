@@ -75,7 +75,21 @@ limits:
   # This does NOT loosen the original decision, it localizes it: fresh-only
   # still applies everywhere supply justifies it. If the email starts filling
   # with cold primary-metro reqs, lower this — not max_posting_age_days.
-  max_posting_age_days_primary: 30
+  # 10, lowered from 30 on 2026-08-21. The 30-day window was set when the
+  # primary metros looked empty inside a week - measured then, 3 Charlotte and
+  # 1 RTP posting against 392 Bay Area. That measurement was taken through a
+  # description gate that was not working: filters.check_description ran on raw
+  # HTML, so neither the years requirement nor the clearance patterns could see
+  # a clause boundary, and the pool it was measuring was padded with mid-level
+  # roles that had no business being in it.
+  #
+  # Re-measured 2026-08-21 with the gate fixed, against the same live boards:
+  # postings that are entry-level AND clean number 56 software / 26 hardware
+  # inside ONE day, and 83 / 51 inside seven. The drought was never a supply
+  # problem, so the wide window is no longer buying anything - and it was
+  # costing a great deal, because fetch depth scales with it (RTX ~223 pages at
+  # 30 days, ~50 at 7) and that depth is what draws the 429s.
+  max_posting_age_days_primary: 10
   # Diversity guard: at most this many slots per company per track, so one
   # company with a big board cannot take the whole email.
   max_per_company: 2
@@ -90,7 +104,35 @@ limits:
   # is worth PAYING to score; this one governs what is still worth applying to,
   # and a month-old posting often is. Raising it re-admits cold reqs; lowering
   # it toward 7 shrinks the backlog the email draws on in a slow week.
-  max_backlog_age_days: 30
+  #
+  # 7, lowered from 30 on 2026-08-21. The owner's ask is "posted that day or a
+  # few days before"; at 30 the backlog was where three-week-old postings kept
+  # re-entering the email. Supply supports it comfortably: 83 software and 51
+  # hardware entry-level-clean postings arrived inside seven days on the day
+  # this was measured, against ten slots.
+  max_backlog_age_days: 7
+
+# Ranking-time freshness. Distinct from limits.max_posting_age_days (what is
+# worth PAYING to score) and limits.max_backlog_age_days (what is still worth
+# applying to). This one governs ORDER: among postings that all cleared those
+# two gates, how much does being older cost a slot?
+#
+# Added 2026-08-21. The old rule was a 6-point cap under the comment "age never
+# outranks fit", and at 6 points it never outranked anything - the 2026-08-21
+# email led with postings 21, 22 and 24 days old while day-old ones sat below
+# them. Owner's call: freshness is the entire point of a daily email.
+freshness:
+  # Postings this age or newer are treated as equally fresh and ranked purely
+  # on fit. "Posted today or a few days before" in the owner's words.
+  fresh_days: 3
+  # Points subtracted per day past fresh_days. UNCAPPED and deliberately steep:
+  # at 4.0 a 10-day-old posting gives up 28 points, so it has to be dramatically
+  # better than a fresh one, not three points better, to take its slot.
+  per_day_penalty: 4.0
+  # Undated postings are kept by check_age (unknown age is not old age) but
+  # they are not evidence of freshness either. Without this an undated evergreen
+  # req ranks as if it were posted this morning.
+  unknown_age_penalty: 12.0
 
 email:
   subject_prefix: "Daily Job Matches"
@@ -102,7 +144,8 @@ email:
   # 30 (its own rationale said the owner lacks the tapeout experience) took a
   # slot from a Draper role scoring 50, and an Anduril role scoring 45
   # displaced two roles scoring 60. Below this score, backfill from Tier 2.
-  tier1_min_fit: 50
+  # 40, lowered from 50 on 2026-08-21 alongside min_fit, same reasoning.
+  tier1_min_fit: 40
   # Global floor: never send a posting the model itself called a poor match.
   # score.py calibrates 0-39 as "poor match, do not apply", so this is that
   # calibration enforced rather than merely printed. Before it existed the
@@ -113,7 +156,17 @@ email:
   #
   # This makes SHORT lists normal and correct. The email says how many were
   # held back and why, so a four-role day is never confusable with a break.
-  min_fit: 40
+  #
+  # 30, lowered from 40 on 2026-08-21. Owner's call: "it doesn't have to align
+  # exactly with my resume." 40 was set to stop the email padding itself with
+  # roles the model itself called poor matches, and that reasoning still holds -
+  # but it was set when staleness was free, so a mediocre fresh posting lost its
+  # slot to a strong three-week-old one. With freshness now dominant in the
+  # ranking, the trade this floor governs has changed: the competition for a
+  # slot is other postings from THIS WEEK, and a 32 posted yesterday is a more
+  # useful lead for a new grad than a 45 from three weeks ago. 30 still holds
+  # the line against the 20s and 25s that prompted the floor in the first place.
+  min_fit: 30
 
 geography:
   primary_bonus: 15
@@ -123,6 +176,14 @@ fetch:
   timeout_seconds: 25
   max_concurrency: 8
   retries: 2
+  # Retry budget for HTTP 429 ONLY, separate from `retries` above. 429 means
+  # "ask again later"; a network fault means "this is broken". Sharing one
+  # budget of 2 cost 32 of 290 boards on 2026-08-21 (675 429s in one run) —
+  # Cardinal Health, Booz Allen, Cox, Curtiss-Wright, CVS Health, all live and
+  # answering normally, all reported to the owner as a degraded fetch. Backoff
+  # is jittered, so raising this costs wall clock only on boards that are
+  # actually throttling.
+  transient_retries: 5
   user_agent: "job-agent/1.0 (+https://github.com/clepine/job-agent)"
   # Workday only. Its CxS endpoint hard-caps a page at 20 postings (limit: 21
   # returns HTTP 400), so a large board costs one request per 20 postings.

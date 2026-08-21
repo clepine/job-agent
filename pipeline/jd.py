@@ -25,7 +25,28 @@ _TAG = re.compile(r"<[^>]+>")
 def html_to_text(raw: str) -> str:
     if not raw:
         return ""
-    text = _SCRIPT_STYLE.sub(" ", raw)
+
+    # Some boards hand back ESCAPED markup - Greenhouse returns
+    # `&lt;div class=&quot;content-intro&quot;&gt;` rather than `<div ...>`.
+    # Every pattern below matches on real angle brackets, so against escaped
+    # input they strip nothing at all and the "text" that comes out the far end
+    # is still markup. That is not cosmetic: this function feeds compress_jd,
+    # which feeds both the keyword diff and the JD sent to the scorer. Measured
+    # 2026-08-21, a SpaceX posting yielded ZERO keywords through the escaped
+    # path and eleven (C, C++, Python, Go, Rust, gRPC, PostgreSQL...) once
+    # unescaped - and the 2026-08-21 email printed "none detected" under two of
+    # its five roles for exactly this reason, while the model scored their fit
+    # from tag soup.
+    #
+    # Bounded to two rounds: enough for the one real double-escape case, and it
+    # cannot loop on adversarial input.
+    text = raw
+    for _ in range(2):
+        if _TAG.search(text) or "&lt;" not in text:
+            break
+        text = html.unescape(text)
+
+    text = _SCRIPT_STYLE.sub(" ", text)
     text = _BR.sub("\n", text)
     text = _LI.sub("\n- ", text)
     text = _BLOCK_END.sub("\n", text)
@@ -125,11 +146,41 @@ def compress_jd(raw: str, max_chars: int = 1600) -> str:
     headings at all, fall back to substance-scored lines rather than returning
     nothing. An empty JD would silently degrade scoring quality.
     """
-    text = html_to_text(raw) if "<" in (raw or "") else (raw or "")
+    # `&lt;` matters as much as `<` here: Greenhouse escapes its markup, so an
+    # escaped posting has no literal angle bracket, skipped this branch
+    # entirely, and arrived at the section splitter still as tag soup - which
+    # matches no heading, so the whole keep-list fell through to the substance
+    # fallback and the compressed JD went to the model as markup. This guard is
+    # why the html_to_text unescape fix above was invisible until now.
+    raw = raw or ""
+    text = html_to_text(raw) if ("<" in raw or "&lt;" in raw) else raw
     if not text.strip():
         return ""
 
     lines = [ln.strip() for ln in text.split("\n") if ln.strip()]
+
+    # Anything ahead of the FIRST recognized section heading is preamble, and
+    # preamble is the "about us" pitch. `dropping` starts False, so that block
+    # used to be kept in full and then the max_chars truncation cut the posting
+    # off before it ever reached the qualifications. Measured 2026-08-21, a
+    # SpaceX req compressed to 1,551 characters of "SpaceX was founded under the
+    # belief that..." and yielded ZERO keywords, while its own requirements
+    # section listed Rust, C++, Python, Go, gRPC and PostgreSQL. The model was
+    # scoring fit from the company blurb.
+    #
+    # Only applied when a keep-heading actually exists: a posting with no
+    # recognizable sections still falls through to the substance-scored
+    # fallback below, unchanged.
+    first_keep = next(
+        (
+            i
+            for i, ln in enumerate(lines)
+            if len(ln) <= 90 and _KEEP_HEADING.match(ln.rstrip(":"))
+        ),
+        None,
+    )
+    if first_keep is not None:
+        lines = lines[first_keep:]
 
     kept: list[str] = []
     dropping = False

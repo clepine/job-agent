@@ -18,6 +18,8 @@ Design rules:
 from __future__ import annotations
 
 import re
+
+from . import jd
 from dataclasses import dataclass
 from typing import Optional
 
@@ -168,10 +170,56 @@ _YEARS_REQUIRED = re.compile(
     r"experience",
     re.I,
 )
-# Phrases that neutralize a years requirement (internships/coursework count).
+# The same requirement phrased WITHOUT the word "experience" - which is how
+# roughly a quarter of postings phrase it:
+#
+#     - 3+ years in SRE, DevOps, field/systems engineering
+#     - 4+ years building automation, developer infrastructure
+#     - Requires 3-5 years in Systems Engineering or relevant role.
+#
+# Measured 2026-08-21: 64 of 227 hydrated postings cleared the gate this way,
+# including Draper, Anduril, OpenAI, Citi and three NVIDIA reqs.
+#
+# The continuation is mandatory, and that is what keeps company boilerplate out:
+# "NVIDIA has been transforming computer graphics for more than 25 years." ends
+# the sentence at "years" and never reaches one of these words.
+_YEARS_ROLE_REQUIRED = re.compile(
+    r"(?<![.\d])(\d{1,2})\s*\+?\s*(?:-|to|\u2013)?\s*(?:\d{1,2})?\s*\+?\s*"
+    r"years?\s+(?:of\s+)?"
+    r"(?:in|with|building|designing|developing|writing|working|leading|managing"
+    r"|relevant|related|professional|industry|hands[- ]on|prior|practical"
+    # "N years of <noun>" - "7+ years of post-silicon validation". Requires the
+    # "of", which is what company boilerplate ("...for more than 25 years.")
+    # does not have.
+    r"|of\s+[a-z])",
+    re.I,
+)
+
+# Phrases that neutralize a years requirement.
+#
+# Every entry must express an ALTERNATIVE to the years, not merely sit near
+# them. Bare "degree" and "education" used to be on this list and they are the
+# opposite of a softener in the shape postings actually use:
+#
+#     Bachelor's degree in Electrical Engineering and 4+ years of experience
+#
+# The degree there is an ADDITIONAL requirement joined by "and", so matching on
+# the word cancelled the very requirement it was compounding. Measured
+# 2026-08-21 across the live pool, that one word accounted for 22 of the 67
+# postings stating a 3+ year requirement - every one of them passed the gate.
+# "or equivalent" and "in lieu of" stay, because those genuinely offer a way in
+# without the years.
 _YEARS_SOFTENER = re.compile(
-    r"(?:including|such as|internship|co-?op|academic|coursework|projects?|"
-    r"or equivalent|degree|education)",
+    r"(?:in lieu of"
+    r"|or equivalent"
+    r"|equivalent (?:combination|experience)"
+    # "including" and "such as" only soften when what follows is the kind of
+    # experience the owner HAS. Bare, they are descriptive, not permissive:
+    # "7+ years of post-silicon validation, preferably including ASIC bring-up"
+    # narrows the requirement, it does not waive it.
+    r"|(?:including|such as)[^.]{0,40}?"
+    r"(?:internships?|co-?ops?|academic|coursework|school|projects?)"
+    r"|internships?|co-?ops?|academic|coursework)",
     re.I,
 )
 
@@ -424,12 +472,73 @@ def check_location(location: str) -> FilterResult:
     return FilterResult(True, metro_class=metro_class, metro=metro)
 
 
+# A clause boundary: a line break, a bullet, or the end of a sentence.
+_TAG_LEFTOVER = re.compile(r"<[a-z/][^>]{0,80}>", re.I)
+
+_CLAUSE_SPLIT = re.compile(r"[\n\r]+|(?<=[.;:])\s+|</?(?:li|p|br|ul|ol|div|tr|h[1-6])\b[^>]*>", re.I)
+
+
+def _clause_around(text: str, start: int, end: int) -> str:
+    """The bullet or sentence containing text[start:end].
+
+    Deliberately NOT a fixed character window. Workday renders a requirements
+    block with the degree bullet directly above the years bullet:
+
+        - Bachelor's in EE/CE/CS, or a related field, or equivalent experience.
+        - 5+ years of experience in embedded software, firmware, ...
+
+    A +/-120 character window straddles that boundary, so "or equivalent" from
+    the DEGREE line silently neutralized the years requirement on the NEXT one,
+    and the gate passed every posting laid out this way - which is most of them.
+
+    Measured 2026-08-21 against live NVIDIA JR2022612: the posting demands 5+
+    years, the gate passed it, and the 2026-08-21 email shipped it at fit 68 as
+    an entry-level match. Owner's call the same day: entry-level is the hard
+    requirement of this agent, so a softener only counts inside its own clause.
+    """
+    lo, hi = 0, len(text)
+    for m in _CLAUSE_SPLIT.finditer(text):
+        if m.end() <= start:
+            lo = m.end()
+        elif m.start() >= end:
+            hi = m.start()
+            break
+    return text[lo:hi]
+
+
+def _normalize_body(description: str) -> str:
+    """Posting body as plain text, whatever the source handed us.
+
+    The hydrated body is raw HTML for most sources, and every gate in this
+    function reads structure that HTML hides: the years softener is scoped to a
+    clause, and the clearance patterns are bounded by `[^.\n]{0,60}`. Neither
+    boundary exists in `<p>Master&#39;s degree preferred.</p><p><b>Experience</b>
+    </p><p>3-5 years experience in electrical engineering</p>` - it is one
+    unbroken line, so the degree softener three paragraphs up still cancelled
+    the years requirement below it and the clearance window ran straight through
+    tag soup.
+
+    Measured 2026-08-21 against the live pool: of 25 hydrated postings stating a
+    3+ year requirement, the gate rejected ZERO. Clause-scoping alone recovered
+    4; normalizing the body first is what recovers the rest.
+
+    Two passes, because some sources double-escape (`&amp;lt;/li&amp;gt;`):
+    unescaping once leaves literal tags behind in the text.
+    """
+    text = jd.html_to_text(description)
+    # Belt and braces: html_to_text already unescapes escaped markup, but a
+    # source that escapes three times would still leave tags behind here.
+    if _TAG_LEFTOVER.search(text):
+        text = jd.html_to_text(text)
+    return text
+
+
 def check_description(description: str) -> FilterResult:
     """Gates that need the posting body. Safe to call with an empty string."""
     if not description:
         return FilterResult(True)
 
-    text = description
+    text = _normalize_body(description)
 
     # --- clearance ---
     obtainable = bool(_OBTAINABLE_CLEARANCE.search(text))
@@ -440,15 +549,20 @@ def check_description(description: str) -> FilterResult:
         )
 
     # --- years of experience ---
-    for m in _YEARS_REQUIRED.finditer(text):
+    # Both phrasings: "N years of experience" and "N years in/building/...".
+    matches = sorted(
+        list(_YEARS_REQUIRED.finditer(text)) + list(_YEARS_ROLE_REQUIRED.finditer(text)),
+        key=lambda m: m.start(),
+    )
+    for m in matches:
         try:
             years = int(m.group(1))
         except (TypeError, ValueError):
             continue
         if years < 3:
             continue
-        window = text[max(0, m.start() - 120) : m.end() + 120]
-        if _YEARS_SOFTENER.search(window):
+        # Scoped to the CLAUSE, not a character window. See _clause_around.
+        if _YEARS_SOFTENER.search(_clause_around(text, m.start(), m.end())):
             continue
         return FilterResult(
             False, "description", f"requires {years}+ years experience"

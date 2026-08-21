@@ -13,7 +13,7 @@ padding the list with a bad match.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Optional, Sequence
 
 from . import filters
 from .geo import location_bonus
@@ -35,12 +35,38 @@ def final_score(job: Job, cfg: dict) -> float:
         score += 3.0
     if job.clearance_advantage:
         score += 5.0
-    # Mild freshness preference — a 30-day-old posting is a colder lead than a
-    # 1-day-old one, but age never outranks fit.
-    age = job.age_days
-    if age is not None:
-        score += max(-6.0, -age / 5.0)
+    score += freshness_penalty(job.age_days, cfg)
     return round(score, 3)
+
+
+def freshness_penalty(age_days: Optional[int], cfg: dict) -> float:
+    """How much staleness costs a posting in the ranking.
+
+    This used to be `max(-6.0, -age / 5.0)` under the comment "age never
+    outranks fit". At a 6-point cap it never outranked anything: a 21-day-old
+    posting scoring 68 beat a 1-day-old posting scoring 65, so the 2026-08-21
+    email led with roles 21, 22 and 24 days old and put the day-old ones
+    beneath them.
+
+    Owner's call 2026-08-21: freshness is the point of a DAILY email. Anything
+    inside `fresh_days` is treated as equally fresh and ranked purely on fit;
+    past that the penalty is linear and UNCAPPED, so a three-week-old posting
+    has to be extraordinary to displace a same-week one rather than merely
+    three points better.
+
+    An unknown posting date is penalized, not exempted. `check_age` keeps
+    undated postings because unknown age is not the same as old age - but it is
+    not evidence of freshness either, and letting them rank as if they were
+    posted today is how an undated evergreen req wins a slot in a daily digest.
+    """
+    f = cfg.get("freshness") or {}
+    fresh_days = int(f.get("fresh_days", 3))
+    per_day = float(f.get("per_day_penalty", 4.0))
+    if age_days is None:
+        return -float(f.get("unknown_age_penalty", 12.0))
+    if age_days <= fresh_days:
+        return 0.0
+    return -per_day * (age_days - fresh_days)
 
 
 def eligible(

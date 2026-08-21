@@ -68,15 +68,28 @@ def infer_track(title: str, description: str = "", company_hint: str = "software
     sw = bool(_SOFTWARE_STRONG.search(t))
     emb = bool(_EMBEDDED.search(t))
 
-    if emb and not sw:
+    # Embedded/firmware ALWAYS routes to hardware, whatever else the title says.
+    #
+    # This used to read `if emb and not sw`, followed by `if sw and not hw`.
+    # "Embedded Software Engineer" and "Embedded Linux Software Engineer" set
+    # emb and sw but NOT hw (neither title contains a _HARDWARE_STRONG term), so
+    # they fell through the first branch and were caught by `sw and not hw` -
+    # returning software, and making the `hw and sw` branch below, whose comment
+    # names exactly this case, unreachable for it.
+    #
+    # The cost was not cosmetic. Embedded is PLAN.md section 4's strongest
+    # hardware angle, so every embedded posting was scored against the SOFTWARE
+    # resume and filed in the software section, while the hardware track ran dry
+    # - the 2026-08-21 email sent an "Embedded Linux Software Engineer" under
+    # Software and reported 0 hardware matches on the same page.
+    if emb:
         return "hardware"
     if hw and not sw:
         return "hardware"
     if sw and not hw:
         return "software"
     if hw and sw:
-        # e.g. "Embedded Software Engineer" — embedded wins, it is the bridge role.
-        return "hardware" if emb or hw else "software"
+        return "hardware"
 
     # Title was ambiguous ("Engineer I", "Systems Engineer"). Try the body.
     body = (description or "")[:4000]

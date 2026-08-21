@@ -8,6 +8,7 @@ concurrently and fail soft: one dead board must never abort a run.
 from __future__ import annotations
 
 import logging
+import random
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Iterable, Optional
@@ -56,18 +57,31 @@ _TRANSIENT_STATUS = {429}
 
 
 def _retry_after(resp: httpx.Response, attempt: int) -> float:
-    """Seconds to wait: the server's Retry-After if it gave one, else backoff."""
+    """Seconds to wait: the server's Retry-After if it gave one, else backoff.
+
+    Jittered, and deliberately not a tight cap. A run makes up to
+    fetch.max_concurrency x fetch.workday_page_wave requests in flight at once
+    (8 x 6 = 48), so when a tenant starts shedding load every worker hits 429
+    within the same second. Un-jittered backoff marches them all into the next
+    window together and they collide again; the 0.7-1.3x spread breaks up the
+    convoy. Measured 2026-08-21: one full run took 675 separate 429s.
+    """
     raw = resp.headers.get("Retry-After")
     if raw:
         try:
-            return min(10.0, max(0.0, float(raw)))
+            return min(20.0, max(0.0, float(raw)))
         except ValueError:
             pass
-    return min(4.0, 0.5 * (2**attempt))
+    base = min(15.0, 0.75 * (2**attempt))
+    return base * (0.7 + random.random() * 0.6)
 
 
 def post_json(
-    client: httpx.Client, url: str, payload: dict, retries: int = 2
+    client: httpx.Client,
+    url: str,
+    payload: dict,
+    retries: int = 2,
+    transient_retries: int = 5,
 ) -> Any:
     """POST a JSON body and return the decoded response.
 
@@ -86,16 +100,29 @@ def post_json(
     fetcher fails soft, the run continues and simply reports fewer postings.
     Measured 2026-08-19, a saturated network turned that into 52 of 290 boards
     dropped in one run — an 18% loss that looked exactly like a quiet morning.
+
+    429 therefore gets its OWN retry budget (`transient_retries`), separate from
+    `retries`. Sharing one budget of 2 was the remaining half of that bug: a
+    board needing 200 pages will collect hundreds of 429s in a run, and two
+    attempts is not a rate-limit strategy, it is a coin flip. Measured
+    2026-08-21, one run took 675 429s and lost 32 of 290 boards to them —
+    Cardinal Health, Booz Allen, Cox, Curtiss-Wright and CVS Health among them,
+    all live boards answering normally, all reported to the owner as a degraded
+    fetch. `retries` still governs genuine network faults, where two attempts is
+    the right number and a long wait buys nothing.
     """
     last: Optional[Exception] = None
-    for attempt in range(retries + 1):
+    faults = 0        # network-level failures, budgeted by `retries`
+    throttles = 0     # 429s, budgeted by `transient_retries`
+    while True:
         try:
             resp = client.post(url, json=payload)
             if resp.status_code in _TRANSIENT_STATUS:
                 last = BoardError(f"{resp.status_code} {url}")
-                if attempt == retries:
+                if throttles >= transient_retries:
                     break
-                time.sleep(_retry_after(resp, attempt))
+                time.sleep(_retry_after(resp, throttles))
+                throttles += 1
                 continue
             if 400 <= resp.status_code < 500:
                 raise BoardError(f"{resp.status_code} {url}")
@@ -105,8 +132,9 @@ def post_json(
             raise
         except Exception as exc:  # noqa: BLE001 - fail soft by design
             last = exc
-            if attempt == retries:
+            if faults >= retries:
                 break
+            faults += 1
     raise BoardError(f"{url}: {last}")
 
 

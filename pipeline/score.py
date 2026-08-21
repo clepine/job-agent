@@ -42,9 +42,17 @@ For each posting, output:
               80-100 strong match, he should apply today
               60-79  good match, clearly worth applying
               40-59  plausible but a stretch on skills or focus
-              0-39   poor match
+              30-39  loose match - adjacent skills, still worth a look as a new grad
+              0-29   poor match, do not apply
   rationale ONE sentence, under 25 words, naming the concrete overlap or the
             concrete gap. No filler, no restating the job title.
+
+Judge ACCESSIBILITY to a strong new grad, not overlap with the resume. He is
+early-career: every role will ask for something he has not done yet, and a
+posting he could grow into within a few months is a real lead, not a stretch.
+Reserve 0-29 for roles that are genuinely closed to him - a different discipline,
+or experience no new graduate could have. Do not mark a role down merely because
+a named tool or framework is missing from the resume.
 
 Score honestly. A generous score wastes one of five daily slots on a bad match."""
 

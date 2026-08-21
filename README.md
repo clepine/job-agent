@@ -234,8 +234,8 @@ outranking it. Three gates now run at selection time instead:
 
 | Gate | Setting | What it stops |
 |---|---|---|
-| Backlog age | `limits.max_backlog_age_days: 30` | A 74-day-old req went out in the 2026-08-18 hardware email; the pool held a sendable 124-day-old one. |
-| Fit floor | `email.min_fit: 40` | The email sent five per track whether or not five were worth sending — including a Waymo ML ASIC role at 30/100 whose own rationale said the owner lacks tapeout experience. |
+| Backlog age | `limits.max_backlog_age_days: 7` | A 74-day-old req went out in the 2026-08-18 hardware email; the pool held a sendable 124-day-old one. Lowered 30 → 7 on 2026-08-21: the owner wants postings from the last few days, and supply supports it (83 software / 51 hardware entry-level-clean postings inside seven days, against ten slots). |
+| Fit floor | `email.min_fit: 30` | The email sent five per track whether or not five were worth sending — including a Waymo ML ASIC role at 30/100 whose own rationale said the owner lacks tapeout experience. Lowered 40 → 30 on 2026-08-21 together with a new `30-39 loose match` band in `score.py`, which now scores *accessibility to a strong new grad* rather than resume overlap. The floor is still the scorer's own bottom band, never below it. |
 | URL-slug disqualifier | always on | An aggregator truncated Draper's "Embedded Quality & Fielded Systems **Intern**" to "...Systems In". The word that disqualifies it was gone; the URL still had it. |
 
 So a four-role day is a normal, correct outcome. The email always says how many
@@ -246,7 +246,7 @@ were held back and why — a short list is never confusable with a broken run.
 | Setting | Applies to | Value |
 |---|---|---|
 | `limits.max_posting_age_days` | secondary metros, remote | 7 |
-| `limits.max_posting_age_days_primary` | RTP, Charlotte, Boston, NYC, Chicago | 30 |
+| `limits.max_posting_age_days_primary` | RTP, Charlotte, Boston, NYC, Chicago | 10 |
 
 A single 7-day window was measured against the whole board list and looked like
 a comfortable surplus. Broken out by metro it was not: the same 770-posting
@@ -270,7 +270,7 @@ limit.
 class is unknown until the location filter runs, which is after the fetch, so
 stopping at 7 days would discard the postings the wider window exists to admit.
 `filters.fetch_max_age()` is the one place that decides this. It is not free:
-at 30 days RTX needs ~223 Workday pages and Northrop ~185, against ~50 and ~35
+at 30 days RTX needed ~223 Workday pages and Northrop ~185, against ~50 and ~35
 at 7 days, so `fetch.workday_max_pages` had to rise to match.
 
 **Scores expire when the resume changes — or when the scoring changes.** Each

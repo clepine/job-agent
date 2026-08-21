@@ -319,6 +319,10 @@ def main(argv: list[str] | None = None) -> int:
                 pool = db.unscored(
                     conn, track, limit=int(limits["max_jobs_to_prerank"]),
                     resume_hash=hashes[track],
+                    # Never pay to score a posting the backlog gate will refuse
+                    # to send. Scoring capacity is the scarce resource here, not
+                    # money: 20 scores against ~250 arrivals a day.
+                    max_age_days=limits.get("max_backlog_age_days"),
                 )
                 if not pool:
                     print(f"{track:9}: nothing new to score")

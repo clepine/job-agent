@@ -83,6 +83,8 @@ def fetch_boards(cfg: dict, companies: list[dict]) -> tuple[list[Job], FetchRepo
         "max_age_days": filters.fetch_max_age(cfg.get("limits", {})),
         "max_pages": int(fetch_cfg.get("workday_max_pages", workday.DEFAULT_MAX_PAGES)),
         "retries": int(fetch_cfg.get("retries", 2)),
+        # 429 gets its own, larger budget — see sources/base.post_json.
+        "transient_retries": int(fetch_cfg.get("transient_retries", 5)),
         "page_wave": int(fetch_cfg.get("workday_page_wave", workday.DEFAULT_PAGE_WAVE)),
     }
 
