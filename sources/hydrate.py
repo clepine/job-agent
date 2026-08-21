@@ -171,3 +171,28 @@ def hydrate_all(
 
 def hydratable(job: Job) -> bool:
     return job.ats in _HANDLERS
+
+
+def mark_for_rehydration(jobs: Iterable[Job]) -> list[Job]:
+    """Jobs whose body must be re-fetched, flagged so hydrate_all acts on them.
+
+    `needs_hydration` is set by the FETCHERS at ingest and is a non-persisted
+    working field, so anything read back out of the database arrives False.
+    `hydrate_all` targets `[j for j in jobs if j.needs_hydration]`, which meant a
+    caller handing it a list of database-loaded jobs got a silent no-op: it
+    reported "re-hydrated 0/5" and carried on.
+
+    That is exactly what run.py's pre-email top-up did. Descriptions are not
+    persisted in the committed ledger, so every posting picked from the scored
+    backlog reached the email with an empty body - which is why the 2026-08-21
+    digest printed "ATS keywords: none detected" under two of five roles and a
+    rationale complaining that an "empty JD limits detail". The bodies were
+    never fetched, and nothing said so.
+
+    Selecting and flagging live together here so a caller cannot do one without
+    the other.
+    """
+    stale = [j for j in jobs if not j.description and hydratable(j)]
+    for job in stale:
+        job.needs_hydration = True
+    return stale

@@ -411,7 +411,8 @@ def main(argv: list[str] | None = None) -> int:
         # scored days ago arrives with an empty body. Re-hydrate just the ten
         # being emailed — free HTTP, and only the keyword diff depends on it.
         picked = sw_sel.jobs + hw_sel.jobs
-        stale_bodies = [j for j in picked if not j.description and hydrate.hydratable(j)]
+        # Selection and flagging are one call on purpose - see the docstring.
+        stale_bodies = hydrate.mark_for_rehydration(picked)
         if stale_bodies:
             client = make_client(cfg)
             try:
