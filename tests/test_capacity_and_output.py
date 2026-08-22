@@ -19,9 +19,14 @@ from pipeline.models import Job
 
 ROOT = Path(__file__).resolve().parent.parent
 
-# Measured from out/usage.jsonl on 2026-08-21: $0.0126 per call at
-# score_batch_size 8. Update alongside the config comment if pricing moves.
-USD_PER_POSTING = 0.00158
+# Measured across three real runs (see the config.yaml comment for the table):
+# $0.00330-$0.00345 per posting scored. Take the top of the range.
+#
+# An earlier value of $0.00158 was derived rather than measured -- it assumed
+# every batch call carried a full score_batch_size of 8 -- and it was 2.1x
+# optimistic. That is precisely how a budget guard gets written and still lets a
+# run abort mid-scoring, so this number comes from usage.jsonl and nowhere else.
+USD_PER_POSTING = 0.0035
 
 
 def _cfg() -> dict:

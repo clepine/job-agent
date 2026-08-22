@@ -25,13 +25,24 @@ budget:
   # dumping 500 jobs into the model overnight.
   #
   # 0.15, raised from 0.10 on 2026-08-21 by the owner, to buy scoring capacity.
-  # Measured from out/usage.jsonl: $0.0126 per call at score_batch_size 8, so
-  # $0.00158 per posting scored. At max_new_scores_per_run 30 a full run scores
-  # 60 postings for ~$0.095, leaving ~37% headroom against this ceiling for
-  # per-call variance. Do not raise the score cap without raising this in the
-  # same edit: the ceiling aborts BEFORE the call that would breach it, so a run
-  # that outgrows it stops scoring half way and the email quietly draws on a
-  # thinner pool than it should.
+  #
+  # Cost is measured from THREE REAL RUNS, not derived from list pricing:
+  #
+  #     date        postings scored   cost      per posting
+  #     2026-08-19        28          $0.0965     $0.00345
+  #     2026-08-20        28          $0.0926     $0.00331
+  #     2026-08-21        20          $0.0659     $0.00330
+  #
+  # Call it $0.0035 per posting at the top of the range. That is 2.1x an earlier
+  # estimate of $0.00158, which was wrong because it assumed every batch call
+  # carried a full score_batch_size of 8 - the real runs average closer to 7 and
+  # the cached-prefix saving is smaller than the arithmetic suggested.
+  #
+  # Do not raise the score cap without raising this in the same edit. The
+  # ceiling aborts BEFORE the call that would breach it, so a run that outgrows
+  # its budget does not fail loudly: it stops scoring part way through and the
+  # email quietly draws on a thinner pool. Note the old $0.10 ceiling was
+  # already nearly binding - the 2026-08-19 run cost $0.0965 against it.
   max_usd_per_run: 0.15
   # Sonnet 5 list pricing, USD per 1M tokens. Update if pricing changes.
   # (An introductory rate of $2/$10 ran through 2026-08-31; we estimate at the
@@ -44,24 +55,32 @@ budget:
 
 limits:
   # Cheap local BM25 pre-rank keeps this many per track before LLM scoring.
-  # 60, raised from 40 alongside max_new_scores_per_run on 2026-08-21: preranking
-  # 40 candidates down to 30 is barely a selection. Free - this stage costs no
-  # tokens, it only decides which postings the paid stage sees first.
+  # 60, raised from 40 on 2026-08-21. With the paid stage capped at 17 per
+  # track, BM25 now chooses 17 out of 60 rather than out of 40 - a real
+  # selection, and free, since this stage costs no tokens. It only decides which
+  # postings the paid stage sees first.
   max_jobs_to_prerank: 60
   # Ceiling on how many NEVER-SCORED jobs get sent to the model in one run,
   # PER TRACK - so this number doubled is the real per-run count.
   #
-  # 30, raised from 20 on 2026-08-21 once budget.max_usd_per_run went to $0.15.
+  # 17, from 20 on 2026-08-21, sized against the MEASURED cost above rather
+  # than an estimate. At $0.0035 per posting a full run scores 34 and spends
+  # ~$0.119 - 79% of the $0.15 ceiling, leaving room for a bad day. A cap of 30
+  # per track would have cost ~$0.21 and aborted scoring mid-run.
+  #
+  # This is still a real increase in capacity, just not the one the arithmetic
+  # first suggested: under the old $0.10 ceiling the safe cap was about 11 per
+  # track, and the nominal 20 was only ever survivable because the unscored
+  # pool was smaller than the cap. It will not be from now on - the ledger holds
+  # 223 unscored postings inside 7 days.
   # This is the binding constraint on the whole agent, not the fit floor: a
   # posting cannot be sent until it is scored, and measured that day 60 software
   # and 50 hardware postings arrived in a single fetch. At 20 the majority were
   # never scored at all, and because db.unscored() orders freshest-first they
   # could never catch up - the next morning's arrivals outrank them permanently.
-  # 30 covers a normal day's hardware inflow outright and most of software's.
-  #
   # The cap still does its original job: it stops a filter bug or a backlog from
-  # turning one morning into a large bill. ~$0.095/run, ~$2.08/month.
-  max_new_scores_per_run: 30
+  # turning one morning into a large bill. ~$0.119/run, ~$2.60/month.
+  max_new_scores_per_run: 17
   # Jobs per scoring request. Batching amortizes the cached resume prefix.
   score_batch_size: 8
   # Compressed job descriptions are hard-truncated to this many characters
