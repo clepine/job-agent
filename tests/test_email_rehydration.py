@@ -67,3 +67,43 @@ class _FailingClient:
 
     def post(self, *_a, **_kw):
         raise RuntimeError("network disabled in tests")
+
+
+# ---------------------------------------------------------------------------
+# The same missing-body trap, one command further downstream - and this one bills.
+# ---------------------------------------------------------------------------
+
+
+def test_tailor_refuses_to_bill_for_an_empty_job_description(tmp_path, capsys, monkeypatch):
+    """`pipeline.tailor --job-id <id>` is the command the daily email prints
+    under every posting. Those ids resolve against a state.db rebuilt from the
+    committed ledger, which stores no descriptions - so the body is routinely
+    empty, compress_jd("") returns "", and the model used to be handed a
+    tailoring brief with no job description in it. At full price.
+    """
+    from pipeline import db as db_mod
+    from pipeline import tailor
+
+    dbfile = tmp_path / "state.db"
+    with db_mod.connect(dbfile) as conn:
+        db_mod.upsert(conn, [_job(ats="other")])  # 'other' has no body endpoint
+        job_id = _job(ats="other").id
+
+    monkeypatch.setattr(
+        tailor, "load_config", lambda *a, **k: _cfg_pointing_at(dbfile)
+    )
+    rc = tailor.main([f"--job-id={job_id}"])
+    assert rc == 4
+    err = capsys.readouterr().err
+    assert "no job description available" in err
+    assert "costs money" in err
+
+
+def _cfg_pointing_at(dbfile):
+    import yaml
+    from pathlib import Path as _P
+
+    root = _P(__file__).resolve().parent.parent
+    cfg = yaml.safe_load((root / "config.yaml").read_text(encoding="utf-8"))
+    cfg["paths"]["db"] = str(dbfile)
+    return cfg

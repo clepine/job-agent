@@ -41,6 +41,9 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+from sources import hydrate
+from sources.base import make_client
+
 from . import db, keywords
 from .config import load_config, repo_path
 from .jd import compress_jd
@@ -478,9 +481,40 @@ def main(argv: list[str] | None = None) -> int:
     with db.connect(repo_path(cfg["paths"]["db"])) as conn:
         job = db.get(conn, args.job_id)
 
-    if job is None:
-        print(f"error: no job with id {args.job_id!r} in the database", file=sys.stderr)
-        return 2
+        if job is None:
+            print(f"error: no job with id {args.job_id!r} in the database", file=sys.stderr)
+            return 2
+
+        # Descriptions are not persisted in the committed ledger, and state.db
+        # rebuilds itself from that ledger. So the job ids printed in the daily
+        # email - the whole point of this command - routinely resolve to a row
+        # with an EMPTY body once the ledger has round-tripped through CI.
+        #
+        # Nothing downstream noticed. compress_jd("") returns "", the model was
+        # handed a tailoring brief with no job description in it, and the result
+        # was a "tailored" resume tailored to nothing - produced at full price,
+        # since this command spends money where the daily run's keyword diff
+        # does not. Top the body up over free HTTP first.
+        if not job.description and hydrate.hydratable(job):
+            hydrate.mark_for_rehydration([job])
+            client = make_client(cfg)
+            try:
+                hydrate.hydrate_all(client, [job], max_workers=1)
+            finally:
+                client.close()
+            db.fill_descriptions(conn, [job])
+
+    # Refuse rather than bill for a brief with nothing in it. A posting whose
+    # body cannot be fetched is usually one that has been taken down.
+    if not job.description:
+        print(
+            f"error: no job description available for {args.job_id!r} — the body is not "
+            f"in the database and could not be re-fetched from {job.url}\n"
+            f"       Tailoring against an empty description costs money and produces a "
+            f"resume tailored to nothing. The posting may have been withdrawn.",
+            file=sys.stderr,
+        )
+        return 4
 
     master_path = (
         cfg["paths"]["resume_hw"] if job.track == "hardware" else cfg["paths"]["resume_sw"]
